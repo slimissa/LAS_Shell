@@ -1,0 +1,22 @@
+# Fichiers compilés
+*.o
+*.out
+las_shell
+build/
+
+# Fichiers temporaires
+*.swp
+*.swo
+*~
+
+# Fichiers de configuration locaux
+.las_shell_history
+.las_aliases
+
+# Dossiers
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
