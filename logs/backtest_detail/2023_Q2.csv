@@ -1,0 +1,9 @@
+period,2023-Q2
+regime,BEAR
+strat_return,-0.0631
+market_return,-0.0500
+alpha,-0.0131
+sharpe,-3.83
+max_drawdown_pct,15.5
+pnl_usd,-6311.93
+result,FAIL

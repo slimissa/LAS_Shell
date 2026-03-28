@@ -1,0 +1,9 @@
+period,2024-Q2
+regime,BEAR
+strat_return,-0.1016
+market_return,-0.0800
+alpha,-0.0216
+sharpe,-2.13
+max_drawdown_pct,14.8
+pnl_usd,-10158.86
+result,FAIL

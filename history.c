@@ -33,15 +33,6 @@ void cleanup_history() {
     clear_history();
 }
 
-// Gestionnaire de signal pour Ctrl+C
-void handle_sigint(int sig) {
-    (void)sig;
-    printf("\n");
-    rl_on_new_line();
-    rl_replace_line("", 0);
-    rl_redisplay();
-}
-
 // Fonction pour générer les complétions (TAB)
 char* command_generator(const char* text, int state) {
     static int list_index, len;
@@ -81,4 +72,13 @@ char** las_completion(const char* text, int start, int end) {
     }
     
     return matches;
+}
+
+void handle_sigint(int sig) {
+    (void)sig;
+    set_watch_stop(1);     /* stop any running watch loop */
+    printf("\n");
+    rl_on_new_line();
+    rl_replace_line("", 0);
+    rl_redisplay();
 }

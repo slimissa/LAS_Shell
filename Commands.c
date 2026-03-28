@@ -246,11 +246,16 @@ int command_echo(char** args, char** env) {
 
     for (size_t i = start_index; args[i] != NULL; i++) {
 
-        if (args[i][0] == '$') {
+        char* tok = args[i];
 
-            // Environment variable
+        /* \x01 prefix = single-quoted token — print literally, no expansion */
+        if (tok[0] == '\x01') {
+            printf("%s", tok + 1);   /* skip sentinel, print rest as-is */
 
-            char* var_name = args[i] + 1; // Skip the '$'
+        } else if (tok[0] == '$') {
+
+            // Environment variable — unquoted or double-quoted $VAR token
+            char* var_name = tok + 1; // Skip the '$'
 
             char* var_value = my_getenv(var_name, env);
 
@@ -262,7 +267,7 @@ int command_echo(char** args, char** env) {
 
         } else {
 
-            printf("%s", args[i]);
+            printf("%s", tok);
 
         }
 
@@ -679,14 +684,13 @@ void cleanup_cd(void) {
     }
 }
 
-int command_exit(void) {
-
+int command_exit(char** args) {
+    int code = 0;
+    if (args != NULL && args[1] != NULL)
+        code = atoi(args[1]);
     printf("Exit shell\n");
-
-    exit(0);
-
-    return 0;
-
+    exit(code);
+    return code;
 }
 
 // Commandes pour la gestion des jobs
@@ -765,4 +769,254 @@ int command_source(char** args, char** env) {
     // Exécuter le script dans le shell courant (pas de fork)
     extern int execute_script(char* filename, char** env);
     return execute_script(args[1], env);
+}
+
+//====================================================================
+// trading env (qshell)
+
+/* ── QShell: trading environment ───────────────────────────── */
+
+#define TRADING_ENV_FILE ".trading_env"
+
+/* Write or update key=value in .trading_env */
+void save_trading_env(const char* key, const char* value) {
+    /* Read existing lines */
+    char lines[64][512];
+    int  count = 0;
+    int  found = 0;
+
+    FILE* f = fopen(TRADING_ENV_FILE, "r");
+    if (f) {
+        while (fgets(lines[count], sizeof(lines[count]), f) && count < 63) {
+            lines[count][my_strcspn(lines[count], "\n")] = '\0';
+            /* Check if this line is for our key */
+            size_t klen = my_strlen(key);
+            if (my_strncmp(lines[count], key, klen) == 0 && lines[count][klen] == '=') {
+                snprintf(lines[count], sizeof(lines[count]), "%s=%s", key, value);
+                found = 1;
+            }
+            count++;
+        }
+        fclose(f);
+    }
+
+    if (!found) {
+        snprintf(lines[count], sizeof(lines[count]), "%s=%s", key, value);
+        count++;
+    }
+
+    /* Rewrite the file */
+    f = fopen(TRADING_ENV_FILE, "w");
+    if (!f) { perror("save_trading_env"); return; }
+    for (int i = 0; i < count; i++)
+        fprintf(f, "%s\n", lines[i]);
+    fclose(f);
+}
+
+/* Load .trading_env into the shell's env array at startup */
+void load_trading_env(char*** env_ptr) {
+    FILE* f = fopen(TRADING_ENV_FILE, "r");
+    if (!f) return;   /* file doesn't exist yet — that's fine */
+
+    char line[512];
+    while (fgets(line, sizeof(line), f)) {
+        line[my_strcspn(line, "\n")] = '\0';
+        if (line[0] == '\0' || line[0] == '#') continue;
+
+        /* Split on first '=' */
+        char* eq = my_strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char* key   = line;
+        char* value = eq + 1;
+
+        /* Reuse command_setenv logic: build args[] and call it */
+        char* args[4] = { "setenv", key, value, NULL };
+        *env_ptr = command_setenv(args, *env_ptr);
+    }
+    fclose(f);
+}
+
+/* setmarket EXCHANGE */
+char** command_setmarket(char** args, char** env) {
+    if (!args[1]) {
+        fprintf(stderr, "setmarket: usage: setmarket EXCHANGE\n");
+        return env;
+    }
+    save_trading_env("MARKET", args[1]);
+    char* sargs[4] = { "setenv", "MARKET", args[1], NULL };
+    env = command_setenv(sargs, env);
+    printf("MARKET=%s\n", args[1]);
+    set_trading_env(env);   /* pass internal env[] to alias loader */
+    setenv("MARKET", args[1], 1);  /* sync POSIX env for getenv() */
+    reload_trading_aliases();
+    return env;
+}
+
+/* setbroker BROKER */
+char** command_setbroker(char** args, char** env) {
+    if (!args[1]) {
+        fprintf(stderr, "setbroker: usage: setbroker BROKER\n");
+        return env;
+    }
+    save_trading_env("BROKER", args[1]);
+    char* sargs[4] = { "setenv", "BROKER", args[1], NULL };
+    env = command_setenv(sargs, env);
+    printf("BROKER=%s\n", args[1]);
+    return env;
+}
+
+/* setaccount MODE  (PAPER | LIVE) */
+char** command_setaccount(char** args, char** env) {
+    if (!args[1]) {
+        fprintf(stderr, "setaccount: usage: setaccount PAPER|LIVE\n");
+        return env;
+    }
+    save_trading_env("ACCOUNT", args[1]);
+    char* sargs[4] = { "setenv", "ACCOUNT", args[1], NULL };
+    env = command_setenv(sargs, env);
+    printf("ACCOUNT=%s\n", args[1]);
+    return env;
+}
+
+/* setcapital AMOUNT */
+char** command_setcapital(char** args, char** env) {
+    if (!args[1]) {
+        fprintf(stderr, "setcapital: usage: setcapital AMOUNT\n");
+        return env;
+    }
+    double cap = atof(args[1]);
+    if (cap <= 0) {
+        fprintf(stderr, "setcapital: amount must be a positive number\n");
+        return env;
+    }
+    save_trading_env("CAPITAL", args[1]);
+    char* sargs[4] = { "setenv", "CAPITAL", args[1], NULL };
+    env = command_setenv(sargs, env);
+    printf("CAPITAL=%s\n", args[1]);
+    return env;
+}
+/* ── QShell: work mode toggle ──────────────────────────────────────
+ * work       → enable trading prompt
+ * work off   → disable, back to normal prompt               */
+int command_work(char** args) {
+    if (args[1] && my_strcmp(args[1], "off") == 0) {
+        set_work_mode(0);
+        printf("Trading prompt disabled.\n");
+    } else {
+        set_work_mode(1);
+        printf("Trading prompt enabled. Welcome to work mode.\n");
+    }
+    return 0;
+}
+
+/* ── QShell: watch built-in ────────────────────────────────────────
+ * Usage: watch <seconds> <command...>
+ * Repeats command every N seconds until Ctrl+C.
+ * ────────────────────────────────────────────────────────────── */
+int command_watch(char** args, char** env) {
+    if (!args[1] || !args[2]) {
+        fprintf(stderr, "watch: usage: watch <seconds> <command...>\n");
+        return 1;
+    }
+
+    int interval = atoi(args[1]);
+    if (interval <= 0) {
+        fprintf(stderr, "watch: interval must be a positive integer\n");
+        return 1;
+    }
+
+    /* Rebuild the command string from args[2..] */
+    char cmd[1024] = "";
+    for (int i = 2; args[i]; i++) {
+        if (i > 2) my_strncat(cmd, " ", sizeof(cmd) - strlen(cmd) - 1);
+        my_strncat(cmd, args[i], sizeof(cmd) - strlen(cmd) - 1);
+    }
+
+    /* Loop until SIGINT (Ctrl+C) sets watch_stop flag */
+    while (!get_watch_stop()) {
+        /* Clear screen and print header */
+        printf("\033[2J\033[H");   /* clear screen, cursor home */
+        printf("\001\033[1m\002watch %ds: %s\001\033[0m\002\n\n",
+               interval, cmd);
+
+        execute_command_line(cmd, env);
+
+        /* Sleep in 100ms increments so Ctrl+C is responsive */
+        for (int i = 0; i < interval * 10 && !get_watch_stop(); i++) {
+            struct timespec ts = { 0, 100000000L }; /* 100ms */
+            nanosleep(&ts, NULL);
+        }
+    }
+
+    /* Reset flag for next watch call */
+    set_watch_stop(0);
+    printf("\nwatch: stopped\n");
+    return 0;
+}
+
+/* ── QShell: assert built-in ────────────────────────────────────────
+ * Usage: assert <left> <op> <right>
+ * Numeric ops : <  <=  >  >=  ==  !=
+ * String ops  : ==  !=
+ * Returns 0 (success) or 1 (failure — script stops if used with &&)
+ * ────────────────────────────────────────────────────────────── */
+int command_assert(char** args, char** env) {
+    if (!args[1] || !args[2] || !args[3]) {
+        fprintf(stderr, "assert: usage: assert <value> <op> <value>\n");
+        return 1;
+    }
+
+    /* Reconstruct split operators: input_parser may split ">=" into ">" "=" */
+    char* left_raw  = args[1];
+    char* op_raw    = args[2];
+    char* right_raw = args[3];
+    char joined_op[3] = {0};
+    if ((my_strcmp(op_raw, ">") == 0 || my_strcmp(op_raw, "<") == 0)
+        && args[3] && my_strcmp(args[3], "=") == 0 && args[4]) {
+        joined_op[0] = op_raw[0]; joined_op[1] = '=';
+        op_raw    = joined_op;
+        right_raw = args[4];
+    }
+
+    /* Resolve $VAR tokens */
+    char* left  = (left_raw[0]  == '$') ? my_getenv(left_raw+1,  env) : left_raw;
+    char* right = (right_raw[0] == '$') ? my_getenv(right_raw+1, env) : right_raw;
+    if (!left)  left  = "";
+    if (!right) right = "";
+
+    char* op = op_raw;
+
+    /* Detect numeric vs string */
+    char* endL = NULL; char* endR = NULL;
+    double L = strtod(left,  &endL);
+    double R = strtod(right, &endR);
+    int numeric = (endL && endR && *endL == '\0' && *endR == '\0' && left[0] != '\0' && right[0] != '\0');
+
+    int result = 0;
+    if (numeric) {
+        if      (my_strcmp(op, "<" ) == 0) result = (L <  R);
+        else if (my_strcmp(op, "<=") == 0) result = (L <= R);
+        else if (my_strcmp(op, ">" ) == 0) result = (L >  R);
+        else if (my_strcmp(op, ">=") == 0) result = (L >= R);
+        else if (my_strcmp(op, "==") == 0) result = (L == R);
+        else if (my_strcmp(op, "!=") == 0) result = (L != R);
+        else {
+            fprintf(stderr, "assert: unknown operator '%s'\n", op);
+            return 1;
+        }
+    } else {
+        if      (my_strcmp(op, "==") == 0) result = (my_strcmp(left, right) == 0);
+        else if (my_strcmp(op, "!=") == 0) result = (my_strcmp(left, right) != 0);
+        else {
+            fprintf(stderr, "assert: operator '%s' not valid for strings\n", op);
+            return 1;
+        }
+    }
+
+    if (!result) {
+        fprintf(stderr, "assert FAILED: %s %s %s\n", left, op, right);
+        return 1;
+    }
+    return 0;
 }

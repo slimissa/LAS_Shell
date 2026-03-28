@@ -26,6 +26,14 @@
 
 #include <signal.h>
 
+/* ── Alias system ── */
+typedef struct { char* name; char* value; } Alias;
+extern Alias aliases[];
+extern int   alias_count;
+
+
+#include <time.h>
+
 
 #define MAX_INPUT_SIZE 1024
 
@@ -36,6 +44,7 @@
 #define HISTORY_FILE ".las_shell_history"
 
 #define MAX_ALIASES 100
+
 
 #define ALIAS_FILE ".las_aliases"
 
@@ -67,6 +76,9 @@ int execute_with_redirect(char** args, char** env, char* output_file, int append
 int execute_with_input_redirect(char** args, char** env, char* input_file);
 
 int execute_with_both_redirect(char** args, char** env, char* input_file, char* output_file, int append_mode);
+
+int execute_with_csv_log(char** args, char** env, const char* csv_file);
+int execute_risk_gate(char** left_args, char** right_args, char** env);
 
 // pipes.c
 typedef struct {
@@ -135,10 +147,14 @@ char* expand_aliases(char* input);
 int command_alias(char** args);
 int command_unalias(char** args);
 void cleanup_aliases(void);
+void load_trading_aliases(void);
+void reload_trading_aliases(void);
+void set_trading_env(char** env);
 
 // script.c
 int execute_script(char* filename, char** env);
 int execute_command_line(char* input, char** env);
+int execute_command_line_env(char* input, char*** env_ptr);
 int command_source(char** args, char** env);
 
 // substitution.c
@@ -147,7 +163,6 @@ char* expand_substitutions(const char* input);
 char* expand_all_substitutions(const char* input);
 char* execute_and_capture(const char* cmd);
 char* find_next_substitution(const char* input, int* start_pos, int* end_pos);
-int execute_command_line(char* input, char** env);
 
 // prompt.c
 void init_prompt_info(void);
@@ -179,7 +194,7 @@ int command_env(char** env);
 
 int command_which(char** args, char** env);
 
-int command_exit();
+int command_exit(char** args);
 
 
 
@@ -212,8 +227,38 @@ char* my_strchr(const char* str, int c);
 
 char* my_strtok(char* str, const char* delim, char** saveptr);
 
-char* my_strchr(const char* str, int c);
-
 size_t my_strcspn(const char* str, const char* accept);
 
+char* my_strncat(char* dest, const char* src, size_t n);
+
+char* my_strcat(char* dest, const char* src);
+
+int my_strftime(char* buf, size_t buflen, const char* fmt, const struct tm* tm);
+
+int   wait_until(const char* token);
+
 char* my_getenv(const char* name, char** env);
+char* expand_arg(const char* arg, char** env);
+void  expand_args(char** args, char** env);
+char* expand_vars_in_line(const char* input, char** env);
+/* ── QShell: trading environment ── */
+char** command_setmarket(char** args, char** env);
+char** command_setbroker(char** args, char** env);
+char** command_setaccount(char** args, char** env);
+char** command_setcapital(char** args, char** env);
+void   load_trading_env(char*** env_ptr);
+void   save_trading_env(const char* key, const char* value);
+
+/* ── QShell: work mode ── */
+int    command_work(char** args);
+void   set_work_mode(int on);
+int    get_work_mode(void);
+
+/* ── QShell: watch ── */
+int  command_watch(char** args, char** env);
+void set_watch_stop(int val);
+int  get_watch_stop(void);
+
+int command_assert(char** args, char** env);
+
+int get_last_exit_status(void);

@@ -1,0 +1,9 @@
+period,2023-Q1
+regime,BULL
+strat_return,0.0886
+market_return,0.0800
+alpha,0.0086
+sharpe,0.68
+max_drawdown_pct,13.0
+pnl_usd,8863.12
+result,PASS

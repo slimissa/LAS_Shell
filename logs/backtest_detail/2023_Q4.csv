@@ -1,0 +1,9 @@
+period,2023-Q4
+regime,CHOP
+strat_return,-0.0270
+market_return,0.0200
+alpha,-0.0470
+sharpe,-3.37
+max_drawdown_pct,3.9
+pnl_usd,-2703.75
+result,FAIL

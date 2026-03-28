@@ -2,6 +2,7 @@
 
 // Fonction pour exécuter un pipeline
 int execute_pipeline(char*** commands, int cmd_count, char** env) {
+    (void)env;
     int i;
     int prev_pipe[2] = {-1, -1};  // Pipe précédent (lecture)
     pid_t pids[cmd_count];

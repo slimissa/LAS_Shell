@@ -1,10 +1,6 @@
 #include "my_own_shell.h"
 
-typedef struct {
-    char* name;      // Nom de l'alias (ex: "ll")
-    char* value;     // Valeur (ex: "ls -la")
-} Alias;
-
+/* Alias typedef and extern declarations are in my_own_shell.h */
 Alias aliases[MAX_ALIASES];
 int alias_count = 0;
 
@@ -57,7 +53,6 @@ int add_alias(char* name, char* value) {
             // Remplacer
             free(aliases[i].value);
             aliases[i].value = my_strdup(value);
-            save_aliases();
             return 0;
         }
     }
@@ -67,7 +62,6 @@ int add_alias(char* name, char* value) {
         aliases[alias_count].name = my_strdup(name);
         aliases[alias_count].value = my_strdup(value);
         alias_count++;
-        save_aliases();
         return 0;
     }
     return -1; // Trop d'aliases
@@ -85,7 +79,6 @@ int remove_alias(char* name) {
                 aliases[j] = aliases[j+1];
             }
             alias_count--;
-            save_aliases();
             return 0;
         }
     }
@@ -110,57 +103,57 @@ char* find_alias(char* name) {
 }
 
 // Expander une ligne de commande (remplacer les aliases)
+// FIX: loop until stable so chained aliases work (alias b='a'; alias a='echo hi')
 char* expand_aliases(char* input) {
     if (!input || input[0] == '\0') return my_strdup(input);
-    
-    // Copier la ligne pour la parser
-    char* input_copy = my_strdup(input);
-    if (!input_copy) return my_strdup(input);
-    
-    // Trouver le premier mot manuellement (sans strtok qui modifie la chaîne)
-    char* first_word = input_copy;
-    char* rest = input_copy;
-    
-    // Avancer jusqu'au premier espace ou tab
-    while (*rest && *rest != ' ' && *rest != '\t') {
-        rest++;
+
+    char* current = my_strdup(input);
+    if (!current) return my_strdup(input);
+
+    for (int iter = 0; iter < 10; iter++) {
+        char* copy = my_strdup(current);
+        if (!copy) break;
+
+        /* isolate first word */
+        char* first_word = copy;
+        char* rest = copy;
+        while (*rest && *rest != ' ' && *rest != '\t') rest++;
+        if (*rest) {
+            *rest = '\0';
+            rest++;
+            while (*rest == ' ' || *rest == '\t') rest++;
+        }
+
+        char* alias_value = find_alias(first_word);
+        if (!alias_value) { free(copy); break; } /* no alias — done */
+
+        /* guard against infinite self-referential alias */
+        char av_buf[512];
+        strncpy(av_buf, alias_value, sizeof(av_buf) - 1);
+        av_buf[sizeof(av_buf) - 1] = '\0';
+        char* av_first_end = av_buf;
+        while (*av_first_end && *av_first_end != ' ' && *av_first_end != '\t')
+            av_first_end++;
+        *av_first_end = '\0';
+        if (my_strcmp(av_buf, first_word) == 0) { free(copy); break; }
+
+        size_t len = my_strlen(alias_value) + 1;
+        if (rest && *rest) len += my_strlen(rest) + 1;
+
+        char* result = malloc(len + 1);
+        if (!result) { free(copy); break; }
+
+        if (rest && *rest)
+            sprintf(result, "%s %s", alias_value, rest);
+        else
+            sprintf(result, "%s", alias_value);
+
+        free(copy);
+        free(current);
+        current = result;
     }
-    
-    // Marquer la fin du premier mot
-    if (*rest) {
-        *rest = '\0';
-        rest++;
-        // Sauter les espaces supplémentaires
-        while (*rest == ' ' || *rest == '\t') rest++;
-    }
-    
-    // Chercher l'alias
-    char* alias_value = find_alias(first_word);
-    if (!alias_value) {
-        free(input_copy);
-        return my_strdup(input);
-    }
-    
-    // Construire le résultat
-    size_t len = my_strlen(alias_value) + 1;
-    if (rest && *rest != '\0') {
-        len += my_strlen(rest);
-    }
-    
-    char* result = malloc(len + 1);
-    if (!result) {
-        free(input_copy);
-        return my_strdup(input);
-    }
-    
-    if (rest && *rest != '\0') {
-        sprintf(result, "%s %s", alias_value, rest);
-    } else {
-        sprintf(result, "%s", alias_value);
-    }
-    
-    free(input_copy);
-    return result;
+
+    return current;
 }
 // Commande alias built-in
 

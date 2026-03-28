@@ -16,7 +16,7 @@ TARGET = las_shell
 # Liste des fichiers objets (.o) à générer
 OBJS = main.o Commands.o helper.o input_parser.o history.o \
        operators.o pipes.o redirection.o script.o substitution.o \
-       alias.o prompt.o
+       alias.o prompt.o trading_aliases_init.o
 
 # Règle par défaut (quand on tape juste "make")
 all: $(TARGET)

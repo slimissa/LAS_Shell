@@ -1,0 +1,9 @@
+periods_tested,8
+periods_passed,3
+periods_failed,5
+pass_rate,0.375
+avg_period_return,0.0476
+total_return,0.3910
+avg_sharpe,-0.90
+strategy,templates/momentum_daily.sh
+run_timestamp,2026-03-24T18:43:03.888266

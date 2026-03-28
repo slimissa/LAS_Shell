@@ -1,0 +1,9 @@
+period,2024-Q4
+regime,BULL
+strat_return,0.1550
+market_return,0.1000
+alpha,0.0550
+sharpe,0.83
+max_drawdown_pct,12.6
+pnl_usd,15501.44
+result,PASS

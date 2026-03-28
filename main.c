@@ -1,5 +1,18 @@
 #include "my_own_shell.h"
 
+static char* expand_tilde_main(const char* path) {
+    if (!path) return NULL;
+    if (path[0] == '~' && (path[1] == '/' || path[1] == '\0')) {
+        char* home = getenv("HOME");
+        if (home) {
+            size_t len = strlen(home) + strlen(path + 1) + 1;
+            char* r = malloc(len);
+            if (r) { snprintf(r, len, "%s%s", home, path + 1); return r; }
+        }
+    }
+    return my_strdup(path);
+}
+
 
 
 //cd pwd echo env setenv unsetenv which exit jobs fg bg
@@ -32,7 +45,7 @@ int shell_builtins(char** args, char** env, char* initial_directory) {
     else if (my_strcmp(args[0], "exit") == 0) {
         save_history();
         save_aliases();
-        return command_exit();
+        return command_exit(args);
     }
     else if (my_strcmp(args[0], "jobs") == 0) {
         return command_jobs(args, env);
@@ -43,6 +56,15 @@ int shell_builtins(char** args, char** env, char* initial_directory) {
     else if (my_strcmp(args[0], "bg") == 0) {
         return command_bg(args, env);
     }
+    else if (my_strcmp(args[0], "assert") == 0) {
+        return command_assert(args, env);
+    }
+    else if (my_strcmp(args[0], "work") == 0) {
+        return command_work(args);
+    }
+    else if (my_strcmp(args[0], "watch") == 0) {
+        return command_watch(args, env);
+    }
     else {
         return -1;
     }
@@ -50,7 +72,6 @@ int shell_builtins(char** args, char** env, char* initial_directory) {
 }
 
 void shell_loop(char** env) {
-    (void)env;
     char* input = NULL;
     char* initial_directory = getcwd(NULL, 0);
     char* expanded_input = NULL;
@@ -117,16 +138,27 @@ void shell_loop(char** env) {
         // Utiliser with_substitutions pour la suite
         input = with_substitutions;
 
+        // ========== EXPANSION $VAR sur la ligne brute ==========
+        // Expand BEFORE operator detection so |> $FILE and ?> work
+        {
+            char* expanded_line = expand_vars_in_line(input, env);
+            if (expanded_line && expanded_line != input) {
+                free(input);
+                input = expanded_line;
+            }
+        }
+
         // ========== DÉTECTION DES OPÉRATEURS (&&, ||, &, ;) ==========
+        // FIX: single | is NOT an operator — only ||, &&, ;, & are
         int has_operator = 0;
         for (int i = 0; input[i]; i++) {
-            if (input[i] == '&' || input[i] == '|' || input[i] == ';') {
-                if (input[i] == '|' && (i == 0 || input[i-1] != '|')) {
-                    continue;
-                }
-                has_operator = 1;
-                break;
-            }
+            char c  = input[i];
+            char c1 = input[i+1];
+            if (c == ';') { has_operator = 1; break; }
+            if (c == '&') { has_operator = 1; break; }
+            if (c == '|' && c1 == '|') { has_operator = 1; break; }
+            if (c == '|' && c1 == '>') { has_operator = 1; break; }
+            if (c == '?' && c1 == '>') { has_operator = 1; break; }
         }
 
         if (has_operator) {
@@ -143,7 +175,7 @@ void shell_loop(char** env) {
         // ========== DÉTECTION DES PIPES (|) ==========
         int has_pipe = 0;
         for (int i = 0; input[i]; i++) {
-            if (input[i] == '|' && (i == 0 || input[i-1] != '|')) {
+            if (input[i] == '|' && (i == 0 || input[i-1] != '|') && input[i+1] != '>') {
                 has_pipe = 1;
                 break;
             }
@@ -174,6 +206,9 @@ void shell_loop(char** env) {
             continue;
         }
 
+        // ========== EXPANSION $VAR DANS LES ARGS ==========
+        expand_args(args, env);
+
         // ========== COMMANDES BUILT-IN ==========
         if (my_strcmp(args[0], "history") == 0) {
             HIST_ENTRY **hist_list = history_list();
@@ -201,8 +236,41 @@ void shell_loop(char** env) {
             env = command_unsetenv(args, env);
             last_status = 0;
         }
+        else if (my_strcmp(args[0], "setmarket") == 0) {
+            env = command_setmarket(args, env); last_status = 0;
+        }
+        else if (my_strcmp(args[0], "setbroker") == 0) {
+            env = command_setbroker(args, env); last_status = 0;
+        }
+        else if (my_strcmp(args[0], "setaccount") == 0) {
+            env = command_setaccount(args, env); last_status = 0;
+        }
+        else if (my_strcmp(args[0], "setcapital") == 0) {
+            env = command_setcapital(args, env); last_status = 0;
+        }
+        /* ── assert: must be handled BEFORE redirection detection
+         * because '>' and '<' in  "assert 5 > 3"  would be mistaken
+         * for output/input redirections otherwise.               ── */
+        else if (my_strcmp(args[0], "assert") == 0) {
+            last_status = command_assert(args, env);
+        }
+        else if (args[0][0] == '@') {
+            if (wait_until(args[0]) == 0) {
+                if (args[1]) {
+                    char remaining[1024] = "";
+                    for (int i = 1; args[i]; i++) {
+                        if (i > 1) my_strncat(remaining, " ", sizeof(remaining)-my_strlen(remaining)-1);
+                        my_strncat(remaining, args[i], sizeof(remaining)-my_strlen(remaining)-1);
+                    }
+                    last_status = execute_command_line(remaining, env);
+                }
+            } else {
+                fprintf(stderr, "@time: invalid format '%s'\n", args[0]);
+                last_status = 1;
+            }
+        }
         else {
-            // ========== DÉTECTION DES REDIRECTIONS ==========
+            // ========== DETECTION DES REDIRECTIONS ==========
             char* output_file = NULL;
             char* input_file = NULL;
             int append_mode = 0;
@@ -236,18 +304,18 @@ void shell_loop(char** env) {
                 if (my_strcmp(args[i], ">") == 0) {
                     has_output_redirect = 1;
                     append_mode = 0;
-                    if (args[i+1] != NULL) output_file = my_strdup(args[i+1]);
+                    if (args[i+1] != NULL) output_file = expand_tilde_main(args[i+1]);
                     i++;
                 }
                 else if (my_strcmp(args[i], ">>") == 0) {
                     has_output_redirect = 1;
                     append_mode = 1;
-                    if (args[i+1] != NULL) output_file = my_strdup(args[i+1]);
+                    if (args[i+1] != NULL) output_file = expand_tilde_main(args[i+1]);
                     i++;
                 }
                 else if (my_strcmp(args[i], "<") == 0) {
                     has_input_redirect = 1;
-                    if (args[i+1] != NULL) input_file = my_strdup(args[i+1]);
+                    if (args[i+1] != NULL) input_file = expand_tilde_main(args[i+1]);
                     i++;
                 }
                 else {
@@ -328,35 +396,54 @@ char* read_input() {
 int main(int argc, char** argv, char** env) {
     init_prompt_info();
 
+    /*
+     * FIX: command_setenv/unsetenv call free() on the env array when adding
+     * new variables, but the original env passed by the OS is NOT heap-allocated.
+     * Deep-copy it at startup so we always own it and can safely free/realloc.
+     */
+    int env_count = 0;
+    while (env[env_count]) env_count++;
+    char** my_env = malloc((env_count + 1) * sizeof(char*));
+    if (!my_env) { perror("malloc"); return 1; }
+    for (int i = 0; i < env_count; i++) my_env[i] = my_strdup(env[i]);
+    my_env[env_count] = NULL;
+    env = my_env;
+
+    /* Load persistent trading environment from .trading_env */
+    load_trading_env(&env);
+
     // Mode non-interactif pour les substitutions
     if (argc == 3 && strcmp(argv[1], "-c") == 0) {
-        // Exécuter la commande et exit
         init_history();
-        init_aliases();
-        
-        char* expanded = expand_aliases(argv[2]);
+        /* FIX: do NOT load aliases from disk in -c mode.
+         * A stale .las_aliases (e.g. ls='aliased_ls' from a prior test run)
+         * would corrupt every non-interactive invocation. -c mode should
+         * always start with a clean alias state. */
+
+        char* expanded  = expand_aliases(argv[2]);
         char* with_subs = process_line_with_substitutions(expanded);
         free(expanded);
-        
-        // Exécuter la ligne de commande
-        execute_command_line(with_subs, env);
+
+        // FIX: capture and return the real exit status
+        int status = execute_command_line(with_subs, env);
         free(with_subs);
-        
+
         cleanup_history();
         cleanup_aliases();
-        return 0;
+        return status;
     }
     
     // Mode interactif normal
     if (argc > 1) {
         // Mode script
         init_history();
-        init_aliases();
-        execute_script(argv[1], env);
+        /* FIX: do NOT load aliases from disk in script mode — same reason
+         * as -c mode above. Scripts should be self-contained. */
+        int script_status = execute_script(argv[1], env);
         cleanup_history();
         cleanup_aliases();
         cleanup_cd();
-        return 0;
+        return script_status;
     }
     
     printf("Welcome to LAS Shell!\n");

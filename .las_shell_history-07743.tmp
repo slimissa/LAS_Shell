@@ -1,0 +1,971 @@
+setcapital 1000
+assert $CAPITAL > 50000 || echo strategy
+assert 5 > 3
+echo ok
+assert 3 > 5 && echo ok
+true
+echo $?
+false
+echo $?
+assert 5 > 3
+echo $?
+assert 3 > 5
+echo $?
+echo hello > ~/qshell_XAIRSf
+cat ~/qshell_XAIRSf
+echo 'BUY AAPL 100' |> /tmp/qshell_tFxm9d.csv
+cat /tmp/qshell_tFxm9d.csv
+echo test |> /tmp/qshell_tFxm9d.csv
+cat /tmp/qshell_tFxm9d.csv
+echo 'BUY AAPL 100' |> /tmp/qshell_tFxm9d.csv
+echo 'SELL MSFT 50' |> /tmp/qshell_tFxm9d.csv
+cat /tmp/qshell_tFxm9d.csv
+echo ORDER |> /tmp/qshell_tFxm9d.csv
+cat /tmp/qshell_tFxm9d.csv
+echo test |> /tmp/qshell_tFxm9d.csv
+setenv LOGFILE /tmp/qshell_bbl5LD.csv
+echo TRADE |> $LOGFILE
+cat /tmp/qshell_bbl5LD.csv
+echo DATA |> /tmp/qshell_bbl5LD.csv
+cat /tmp/qshell_bbl5LD.csv
+echo 'ORDER: BUY AAPL' ?> cat
+echo 'ORDER: SHORT GME' ?> false
+echo REJECTED
+echo data ?> cat && echo sent
+echo data ?> false || echo fallback
+setenv MSG hello
+echo $MSG
+setenv F /tmp/qshell_varpath_11719.txt
+echo hello > $F
+cat $F
+echo $HOME
+echo ok > ~/qshell_tilde_11719.txt
+cat ~/qshell_tilde_11719.txt
+cat ~/.qshell_market
+setmarket NYSE
+alias
+setmarket NYSE
+alias
+setmarket NYSE
+alias
+setmarket NYSE
+alias mstatus
+setmarket NYSE
+rejections
+alias mytest='echo chained'
+true && mytest
+alias mytest='echo chained'
+false || mytest
+alias greet='echo hello'
+alias run_it='greet'
+true && run_it
+echo data |> /tmp/qshell_combo_A3et9u.csv && echo ok
+echo ORDER ?> true |> /tmp/qshell_combo_A3et9u.csv
+cat /tmp/qshell_combo_A3et9u.csv
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 100 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo REJECTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' | python3 /home/slim/Documents/DIY_Shell/scripts/order_executor.py |> /tmp/qshell_exec_yS9xr8.csv
+cat /tmp/qshell_exec_yS9xr8.csv
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'MSFT BUY 50 415.00' | python3 /home/slim/Documents/DIY_Shell/scripts/order_executor.py |> /tmp/qshell_exec_yS9xr8.csv
+cat /tmp/qshell_exec_yS9xr8.csv
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo 'AAPL BUY 100 185.50' | python3 /home/slim/Documents/DIY_Shell/scripts/order_executor.py |> /tmp/qshell_pipe_HiM3h6.csv
+cat /tmp/qshell_pipe_HiM3h6.csv
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 100 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo REJECTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' | python3 /home/slim/Documents/DIY_Shell/scripts/order_executor.py |> /tmp/qshell_exec_fpxaIn.csv
+cat /tmp/qshell_exec_fpxaIn.csv
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'MSFT BUY 50 415.00' | python3 /home/slim/Documents/DIY_Shell/scripts/order_executor.py |> /tmp/qshell_exec_fpxaIn.csv
+cat /tmp/qshell_exec_fpxaIn.csv
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo 'AAPL BUY 100 185.50' | python3 /home/slim/Documents/DIY_Shell/scripts/order_executor.py |> /tmp/qshell_pipe_3Woyj4.csv
+cat /tmp/qshell_pipe_3Woyj4.csv
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 100 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo REJECTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 100 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo REJECTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 100 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo REJECTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 99999 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+python3 /home/slim/Documents/DIY_Shell/scripts/momentum.py AAPL MSFT GOOGL --topn 3 |> /tmp/qshell_sig_oJGORd.csv
+cat /tmp/qshell_sig_oJGORd.csv
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 0.05%' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py --max_notional 1000000 || echo CHECKED
+echo DONE
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 100000
+assert $CAPITAL >= 25000 && python3 /home/slim/Documents/DIY_Shell/scripts/pairs_spread.py AAPL MSFT | grep -q ZSCORE && echo SPREAD_OK
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+python3 /home/slim/Documents/DIY_Shell/scripts/pnl_report.py > /dev/null
+cat ~/.qshell_pnl
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 5000
+assert $CAPITAL > 10000 || echo BLOCKED
+setmarket NYSE
+setcapital 100000
+setaccount PAPER
+setenv PAIR_A AAPL
+setenv PAIR_B MSFT
+setenv ENTRY_Z 2.0
+setenv EXIT_Z  0.5
+setenv POS_SIZE 500
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Mean Reversion Pairs Strategy ────────────────────────────"
+echo "Started : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Pair    : $PAIR_A / $PAIR_B"
+echo "Capital : $CAPITAL  |  Account: $ACCOUNT"
+echo "Entry Z : $ENTRY_Z  |  Exit Z : $EXIT_Z"
+echo ""
+assert $CAPITAL >= 25000 || echo "ABORT: insufficient capital ($CAPITAL < 25000)" && exit 1
+setmarket NYSE
+setcapital 100000
+setaccount PAPER
+setenv PAIR_A AAPL
+setenv PAIR_B MSFT
+setenv ENTRY_Z 2.0
+setenv EXIT_Z  0.5
+setenv POS_SIZE 500
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Mean Reversion Pairs Strategy ────────────────────────────"
+echo "Started : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Pair    : $PAIR_A / $PAIR_B"
+echo "Capital : $CAPITAL  |  Account: $ACCOUNT"
+echo "Entry Z : $ENTRY_Z  |  Exit Z : $EXIT_Z"
+echo ""
+assert $CAPITAL >= 25000 || echo "ABORT: insufficient capital ($CAPITAL < 25000)" && exit 1
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 100000
+assert $CAPITAL >= 25000 && echo CAPITAL_OK
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 10000
+assert $CAPITAL >= 25000 || echo CAPITAL_BLOCKED
+setmarket NYSE
+setcapital 200000
+setaccount PAPER
+setenv TICKER AAPL
+setenv CYCLES 3
+setenv SPREAD_BPS 5
+setenv QUOTE_SIZE 100
+setenv MAX_INVENTORY 500
+setenv MAX_DRAWDOWN 2000
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Market Making Strategy ───────────────────────────────────"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Ticker    : $TICKER"
+echo "Spread    : ${SPREAD_BPS}bps | Size: $QUOTE_SIZE | MaxInv: $MAX_INVENTORY"
+echo "Account   : $ACCOUNT | Capital: $CAPITAL"
+echo ""
+assert $CAPITAL >= 50000 || echo "ABORT: need >= $50,000 capital" && exit 1
+setmarket NYSE
+setcapital 200000
+setaccount PAPER
+setenv TICKER AAPL
+setenv CYCLES 3
+setenv SPREAD_BPS 5
+setenv QUOTE_SIZE 100
+setenv MAX_INVENTORY 500
+setenv MAX_DRAWDOWN 2000
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Market Making Strategy ───────────────────────────────────"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Ticker    : $TICKER"
+echo "Spread    : ${SPREAD_BPS}bps | Size: $QUOTE_SIZE | MaxInv: $MAX_INVENTORY"
+echo "Account   : $ACCOUNT | Capital: $CAPITAL"
+echo ""
+assert $CAPITAL >= 50000 || echo "ABORT: need >= $50,000 capital" && exit 1
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setenv SPREAD_BPS 1
+assert $SPREAD_BPS >= 3 || echo SPREAD_TOO_TIGHT
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py --max_size 500 || echo MM_REJECTED
+setenv STRATEGY templates/momentum_daily.sh
+setenv LOGDIR $QSHELL_HOME/logs
+setenv BT_CAPITAL 100000
+setenv MIN_SHARPE 0.5
+setenv MAX_DRAWDOWN_PCT 20
+setenv PASS_THRESHOLD 3
+setmarket NYSE
+setcapital $BT_CAPITAL
+setaccount PAPER
+echo "══════════════════════════════════════════════════════════════"
+echo "  QShell Backtest Runner"
+echo "══════════════════════════════════════════════════════════════"
+echo "Strategy  : $STRATEGY"
+echo "Capital   : $BT_CAPITAL"
+echo "Min Sharpe: $MIN_SHARPE"
+echo "Max DD    : ${MAX_DRAWDOWN_PCT}%"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo ""
+python3 -c "import os, sys; sys.exit(0 if os.path.exists('$STRATEGY') else 1)" \
+    || echo "ERROR: strategy file not found: $STRATEGY" && exit 1
+setenv STRATEGY templates/momentum_daily.sh
+setenv LOGDIR $QSHELL_HOME/logs
+setenv BT_CAPITAL 100000
+setenv MIN_SHARPE 0.5
+setenv MAX_DRAWDOWN_PCT 20
+setenv PASS_THRESHOLD 3
+setmarket NYSE
+setcapital $BT_CAPITAL
+setaccount PAPER
+echo "══════════════════════════════════════════════════════════════"
+echo "  QShell Backtest Runner"
+echo "══════════════════════════════════════════════════════════════"
+echo "Strategy  : $STRATEGY"
+echo "Capital   : $BT_CAPITAL"
+echo "Min Sharpe: $MIN_SHARPE"
+echo "Max DD    : ${MAX_DRAWDOWN_PCT}%"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo ""
+python3 -c "import os, sys; sys.exit(0 if os.path.exists('$STRATEGY') else 1)" \
+    || echo "ERROR: strategy file not found: $STRATEGY" && exit 1
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setenv LOGDIR /home/slim/Documents/DIY_Shell/logs
+python3 -c "import os; print('OK' if os.path.exists('/home/slim/Documents/DIY_Shell/logs/backtest_summary.csv') else 'MISSING')"
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 100 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo REJECTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 99999 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+python3 /home/slim/Documents/DIY_Shell/scripts/momentum.py AAPL MSFT GOOGL --topn 3 |> /tmp/qshell_sig_JOpItT.csv
+cat /tmp/qshell_sig_JOpItT.csv
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 0.05%' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py --max_notional 1000000 || echo CHECKED
+echo DONE
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 100000
+assert $CAPITAL >= 25000 && python3 /home/slim/Documents/DIY_Shell/scripts/pairs_spread.py AAPL MSFT --entry 0.1 && echo SPREAD_OK || echo SPREAD_OK
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+python3 /home/slim/Documents/DIY_Shell/scripts/pnl_report.py > /dev/null
+cat ~/.qshell_pnl
+setmarket NYSE
+setcapital 100000
+setaccount PAPER
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Momentum Daily Strategy ──────────────────────────────────"
+echo "Started: $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Capital: $CAPITAL | Account: $ACCOUNT"
+assert $CAPITAL > 10000 || exit 1
+echo "✔ Pre-trade checks passed"
+echo ""
+echo "── Scanning momentum signals ────────────────────────────────"
+python3 $QSHELL_HOME/scripts/momentum.py AAPL MSFT GOOGL AMZN TSLA META NVDA SPY QQQ --lookback 20 --topn 5 |> $LOGDIR/momentum_signals.csv
+cat $LOGDIR/momentum_signals.csv
+echo ""
+echo "── Generating orders ────────────────────────────────────────"
+python3 $QSHELL_HOME/scripts/gen_momentum_orders.py
+echo ""
+echo "── Routing orders through risk gate ────────────────────────"
+python3 $QSHELL_HOME/scripts/gen_momentum_orders.py | while read line; do
+    echo $line ?> python3 $QSHELL_HOME/scripts/risk_check.py && echo "PASS: $line" || echo "REJECTED: $line"
+done
+echo ""
+echo "── P&L Report ───────────────────────────────────────────────"
+python3 $QSHELL_HOME/scripts/pnl_report.py
+echo ""
+echo "Strategy complete: $(date +%Y-%m-%dT%H:%M:%S)"
+assert $CAPITAL > 10000 || exit 1
+echo "✔ Pre-trade checks passed"
+echo ""
+echo "── Scanning momentum signals ────────────────────────────────"
+python3 $QSHELL_HOME/scripts/momentum.py AAPL MSFT GOOGL AMZN TSLA META NVDA SPY QQQ --lookback 20 --topn 5 |> $LOGDIR/momentum_signals.csv
+cat $LOGDIR/momentum_signals.csv
+echo ""
+echo "── Generating orders ────────────────────────────────────────"
+python3 $QSHELL_HOME/scripts/gen_momentum_orders.py
+echo ""
+echo "── Routing orders through risk gate ────────────────────────"
+python3 $QSHELL_HOME/scripts/gen_momentum_orders.py | while read line; do
+    echo $line ?> python3 $QSHELL_HOME/scripts/risk_check.py && echo "PASS: $line" || echo "REJECTED: $line"
+done
+echo ""
+echo "── P&L Report ───────────────────────────────────────────────"
+python3 $QSHELL_HOME/scripts/pnl_report.py
+echo ""
+echo "Strategy complete: $(date +%Y-%m-%dT%H:%M:%S)"
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 5000
+assert $CAPITAL > 10000 || echo BLOCKED
+setmarket NYSE
+setcapital 100000
+setaccount PAPER
+setenv PAIR_A AAPL
+setenv PAIR_B MSFT
+setenv ENTRY_Z 2.0
+setenv EXIT_Z  0.5
+setenv POS_SIZE 500
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Mean Reversion Pairs Strategy ────────────────────────────"
+echo "Started : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Pair    : $PAIR_A / $PAIR_B"
+echo "Capital : $CAPITAL  |  Account: $ACCOUNT"
+echo ""
+assert $CAPITAL >= 25000 || echo "ABORT: insufficient capital" && exit 1
+setmarket NYSE
+setcapital 100000
+setaccount PAPER
+setenv PAIR_A AAPL
+setenv PAIR_B MSFT
+setenv ENTRY_Z 2.0
+setenv EXIT_Z  0.5
+setenv POS_SIZE 500
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Mean Reversion Pairs Strategy ────────────────────────────"
+echo "Started : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Pair    : $PAIR_A / $PAIR_B"
+echo "Capital : $CAPITAL  |  Account: $ACCOUNT"
+echo ""
+assert $CAPITAL >= 25000 || echo "ABORT: insufficient capital" && exit 1
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 100000
+assert $CAPITAL >= 25000 && echo CAPITAL_OK
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 10000
+assert $CAPITAL >= 25000 || echo CAPITAL_BLOCKED
+setmarket NYSE
+setcapital 200000
+setaccount PAPER
+setenv TICKER AAPL
+setenv CYCLES 3
+setenv SPREAD_BPS 5
+setenv QUOTE_SIZE 100
+setenv MAX_INVENTORY 500
+setenv MAX_DRAWDOWN 2000
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Market Making Strategy ───────────────────────────────────"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Ticker    : $TICKER"
+echo "Spread    : ${SPREAD_BPS}bps | Size: $QUOTE_SIZE | MaxInv: $MAX_INVENTORY"
+echo "Account   : $ACCOUNT | Capital: $CAPITAL"
+echo ""
+assert $CAPITAL >= 50000 || echo "ABORT: need >= $50,000 capital" && exit 1
+setmarket NYSE
+setcapital 200000
+setaccount PAPER
+setenv TICKER AAPL
+setenv CYCLES 3
+setenv SPREAD_BPS 5
+setenv QUOTE_SIZE 100
+setenv MAX_INVENTORY 500
+setenv MAX_DRAWDOWN 2000
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Market Making Strategy ───────────────────────────────────"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Ticker    : $TICKER"
+echo "Spread    : ${SPREAD_BPS}bps | Size: $QUOTE_SIZE | MaxInv: $MAX_INVENTORY"
+echo "Account   : $ACCOUNT | Capital: $CAPITAL"
+echo ""
+assert $CAPITAL >= 50000 || echo "ABORT: need >= $50,000 capital" && exit 1
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setenv SPREAD_BPS 1
+assert $SPREAD_BPS >= 3 || echo SPREAD_TOO_TIGHT
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py --max_size 500 || echo MM_REJECTED
+setenv STRATEGY templates/momentum_daily.sh
+setenv LOGDIR $QSHELL_HOME/logs
+setenv BT_CAPITAL 100000
+setenv MIN_SHARPE 0.5
+setenv MAX_DRAWDOWN_PCT 20
+setenv PASS_THRESHOLD 3
+setmarket NYSE
+setcapital $BT_CAPITAL
+setaccount PAPER
+echo "══════════════════════════════════════════════════════════════"
+echo "  QShell Backtest Runner"
+echo "══════════════════════════════════════════════════════════════"
+echo "Strategy  : $STRATEGY"
+echo "Capital   : $BT_CAPITAL"
+echo "Min Sharpe: $MIN_SHARPE"
+echo "Max DD    : ${MAX_DRAWDOWN_PCT}%"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo ""
+assert $BT_CAPITAL > 0 || exit 1
+echo "✔ Configuration valid"
+echo ""
+echo "── Running 8-period backtest ────────────────────────────────"
+python3 $QSHELL_HOME/scripts/run_backtest.py
+echo ""
+echo "── Results logged ───────────────────────────────────────────"
+cat $LOGDIR/backtest_summary.csv |> $LOGDIR/bt_run_history.csv
+cat $LOGDIR/backtest_summary.csv
+echo ""
+echo "── Detail reports ───────────────────────────────────────────"
+python3 -c "import os; files=os.listdir('$LOGDIR/backtest_detail'); print('\n'.join(sorted(files)))"
+echo ""
+echo "Backtest complete: $(date +%Y-%m-%dT%H:%M:%S)"
+echo "══════════════════════════════════════════════════════════════"
+setenv STRATEGY templates/momentum_daily.sh
+setenv LOGDIR $QSHELL_HOME/logs
+setenv BT_CAPITAL 100000
+setenv MIN_SHARPE 0.5
+setenv MAX_DRAWDOWN_PCT 20
+setenv PASS_THRESHOLD 3
+setmarket NYSE
+setcapital $BT_CAPITAL
+setaccount PAPER
+echo "══════════════════════════════════════════════════════════════"
+echo "  QShell Backtest Runner"
+echo "══════════════════════════════════════════════════════════════"
+echo "Strategy  : $STRATEGY"
+echo "Capital   : $BT_CAPITAL"
+echo "Min Sharpe: $MIN_SHARPE"
+echo "Max DD    : ${MAX_DRAWDOWN_PCT}%"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo ""
+assert $BT_CAPITAL > 0 || exit 1
+echo "✔ Configuration valid"
+echo ""
+echo "── Running 8-period backtest ────────────────────────────────"
+python3 $QSHELL_HOME/scripts/run_backtest.py
+echo ""
+echo "── Results logged ───────────────────────────────────────────"
+cat $LOGDIR/backtest_summary.csv |> $LOGDIR/bt_run_history.csv
+cat $LOGDIR/backtest_summary.csv
+echo ""
+echo "── Detail reports ───────────────────────────────────────────"
+python3 -c "import os; files=os.listdir('$LOGDIR/backtest_detail'); print('\n'.join(sorted(files)))"
+echo ""
+echo "Backtest complete: $(date +%Y-%m-%dT%H:%M:%S)"
+echo "══════════════════════════════════════════════════════════════"
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setenv LOGDIR /home/slim/Documents/DIY_Shell/logs
+python3 -c "import os; print('OK' if os.path.exists('/home/slim/Documents/DIY_Shell/logs/backtest_summary.csv') else 'MISSING')"
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 100 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo REJECTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 99999 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+python3 /home/slim/Documents/DIY_Shell/scripts/momentum.py AAPL MSFT GOOGL --topn 3 |> /tmp/qshell_sig_QZxMHh.csv
+cat /tmp/qshell_sig_QZxMHh.csv
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 0.05%' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py --max_notional 1000000 || echo CHECKED
+echo DONE
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 100000
+assert $CAPITAL >= 25000 && python3 /home/slim/Documents/DIY_Shell/scripts/pairs_spread.py AAPL MSFT --entry 0.1 && echo SPREAD_OK || echo SPREAD_OK
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+python3 /home/slim/Documents/DIY_Shell/scripts/pnl_report.py > /dev/null
+cat ~/.qshell_pnl
+setmarket NYSE
+setcapital 100000
+setaccount PAPER
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Momentum Daily Strategy ──────────────────────────────────"
+echo "Started: $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Capital: $CAPITAL | Account: $ACCOUNT"
+assert $CAPITAL > 10000 || exit 1
+echo "✔ Pre-trade checks passed"
+echo ""
+echo "── Scanning momentum signals ────────────────────────────────"
+python3 $QSHELL_HOME/scripts/momentum.py AAPL MSFT GOOGL AMZN TSLA META NVDA SPY QQQ --lookback 20 --topn 5 |> $LOGDIR/momentum_signals.csv
+cat $LOGDIR/momentum_signals.csv
+echo ""
+echo "── Generating orders ────────────────────────────────────────"
+python3 $QSHELL_HOME/scripts/gen_momentum_orders.py
+echo ""
+echo "── Routing orders through risk gate ────────────────────────"
+python3 $QSHELL_HOME/scripts/gen_momentum_orders.py | while read line; do
+    echo $line ?> python3 $QSHELL_HOME/scripts/risk_check.py && echo "PASS: $line" || echo "REJECTED: $line"
+done
+echo ""
+echo "── P&L Report ───────────────────────────────────────────────"
+python3 $QSHELL_HOME/scripts/pnl_report.py
+echo ""
+echo "Strategy complete: $(date +%Y-%m-%dT%H:%M:%S)"
+assert $CAPITAL > 10000 || exit 1
+echo "✔ Pre-trade checks passed"
+echo ""
+echo "── Scanning momentum signals ────────────────────────────────"
+python3 $QSHELL_HOME/scripts/momentum.py AAPL MSFT GOOGL AMZN TSLA META NVDA SPY QQQ --lookback 20 --topn 5 |> $LOGDIR/momentum_signals.csv
+cat $LOGDIR/momentum_signals.csv
+echo ""
+echo "── Generating orders ────────────────────────────────────────"
+python3 $QSHELL_HOME/scripts/gen_momentum_orders.py
+echo ""
+echo "── Routing orders through risk gate ────────────────────────"
+python3 $QSHELL_HOME/scripts/gen_momentum_orders.py | while read line; do
+    echo $line ?> python3 $QSHELL_HOME/scripts/risk_check.py && echo "PASS: $line" || echo "REJECTED: $line"
+done
+echo ""
+echo "── P&L Report ───────────────────────────────────────────────"
+python3 $QSHELL_HOME/scripts/pnl_report.py
+echo ""
+echo "Strategy complete: $(date +%Y-%m-%dT%H:%M:%S)"
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 5000
+assert $CAPITAL > 10000 || echo BLOCKED
+setmarket NYSE
+setcapital 100000
+setaccount PAPER
+setenv PAIR_A AAPL
+setenv PAIR_B MSFT
+setenv ENTRY_Z 2.0
+setenv EXIT_Z  0.5
+setenv POS_SIZE 500
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Mean Reversion Pairs Strategy ────────────────────────────"
+echo "Started : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Pair    : $PAIR_A / $PAIR_B"
+echo "Capital : $CAPITAL  |  Account: $ACCOUNT"
+echo ""
+assert $CAPITAL >= 25000 || echo "ABORT: insufficient capital" && exit 1
+setmarket NYSE
+setcapital 100000
+setaccount PAPER
+setenv PAIR_A AAPL
+setenv PAIR_B MSFT
+setenv ENTRY_Z 2.0
+setenv EXIT_Z  0.5
+setenv POS_SIZE 500
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Mean Reversion Pairs Strategy ────────────────────────────"
+echo "Started : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Pair    : $PAIR_A / $PAIR_B"
+echo "Capital : $CAPITAL  |  Account: $ACCOUNT"
+echo ""
+assert $CAPITAL >= 25000 || echo "ABORT: insufficient capital" && exit 1
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 100000
+assert $CAPITAL >= 25000 && echo CAPITAL_OK
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 10000
+assert $CAPITAL >= 25000 || echo CAPITAL_BLOCKED
+setmarket NYSE
+setcapital 200000
+setaccount PAPER
+setenv TICKER AAPL
+setenv CYCLES 3
+setenv SPREAD_BPS 5
+setenv QUOTE_SIZE 100
+setenv MAX_INVENTORY 500
+setenv MAX_DRAWDOWN 2000
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Market Making Strategy ───────────────────────────────────"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Ticker    : $TICKER"
+echo "Spread    : ${SPREAD_BPS}bps | Size: $QUOTE_SIZE | MaxInv: $MAX_INVENTORY"
+echo "Account   : $ACCOUNT | Capital: $CAPITAL"
+echo ""
+assert $CAPITAL >= 50000 || echo "ABORT: need >= $50,000 capital" && exit 1
+setmarket NYSE
+setcapital 200000
+setaccount PAPER
+setenv TICKER AAPL
+setenv CYCLES 3
+setenv SPREAD_BPS 5
+setenv QUOTE_SIZE 100
+setenv MAX_INVENTORY 500
+setenv MAX_DRAWDOWN 2000
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Market Making Strategy ───────────────────────────────────"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Ticker    : $TICKER"
+echo "Spread    : ${SPREAD_BPS}bps | Size: $QUOTE_SIZE | MaxInv: $MAX_INVENTORY"
+echo "Account   : $ACCOUNT | Capital: $CAPITAL"
+echo ""
+assert $CAPITAL >= 50000 || echo "ABORT: need >= $50,000 capital" && exit 1
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setenv SPREAD_BPS 1
+assert $SPREAD_BPS >= 3 || echo SPREAD_TOO_TIGHT
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py --max_size 500 || echo MM_REJECTED
+setenv STRATEGY templates/momentum_daily.sh
+setenv LOGDIR $QSHELL_HOME/logs
+setenv BT_CAPITAL 100000
+setenv MIN_SHARPE 0.5
+setenv MAX_DRAWDOWN_PCT 20
+setenv PASS_THRESHOLD 3
+setmarket NYSE
+setcapital $BT_CAPITAL
+setaccount PAPER
+echo "══════════════════════════════════════════════════════════════"
+echo "  QShell Backtest Runner"
+echo "══════════════════════════════════════════════════════════════"
+echo "Strategy  : $STRATEGY"
+echo "Capital   : $BT_CAPITAL"
+echo "Min Sharpe: $MIN_SHARPE"
+echo "Max DD    : ${MAX_DRAWDOWN_PCT}%"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo ""
+assert $BT_CAPITAL > 0 || exit 1
+echo "✔ Configuration valid"
+echo ""
+echo "── Running 8-period backtest ────────────────────────────────"
+python3 $QSHELL_HOME/scripts/run_backtest.py
+echo ""
+echo "── Results logged ───────────────────────────────────────────"
+cat $LOGDIR/backtest_summary.csv |> $LOGDIR/bt_run_history.csv
+cat $LOGDIR/backtest_summary.csv
+echo ""
+echo "── Detail reports ───────────────────────────────────────────"
+python3 -c "import os; files=os.listdir('$LOGDIR/backtest_detail'); print('\n'.join(sorted(files)))"
+echo ""
+echo "Backtest complete: $(date +%Y-%m-%dT%H:%M:%S)"
+echo "══════════════════════════════════════════════════════════════"
+setenv STRATEGY templates/momentum_daily.sh
+setenv LOGDIR $QSHELL_HOME/logs
+setenv BT_CAPITAL 100000
+setenv MIN_SHARPE 0.5
+setenv MAX_DRAWDOWN_PCT 20
+setenv PASS_THRESHOLD 3
+setmarket NYSE
+setcapital $BT_CAPITAL
+setaccount PAPER
+echo "══════════════════════════════════════════════════════════════"
+echo "  QShell Backtest Runner"
+echo "══════════════════════════════════════════════════════════════"
+echo "Strategy  : $STRATEGY"
+echo "Capital   : $BT_CAPITAL"
+echo "Min Sharpe: $MIN_SHARPE"
+echo "Max DD    : ${MAX_DRAWDOWN_PCT}%"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo ""
+assert $BT_CAPITAL > 0 || exit 1
+echo "✔ Configuration valid"
+echo ""
+echo "── Running 8-period backtest ────────────────────────────────"
+python3 $QSHELL_HOME/scripts/run_backtest.py
+echo ""
+echo "── Results logged ───────────────────────────────────────────"
+cat $LOGDIR/backtest_summary.csv |> $LOGDIR/bt_run_history.csv
+cat $LOGDIR/backtest_summary.csv
+echo ""
+echo "── Detail reports ───────────────────────────────────────────"
+python3 -c "import os; files=os.listdir('$LOGDIR/backtest_detail'); print('\n'.join(sorted(files)))"
+echo ""
+echo "Backtest complete: $(date +%Y-%m-%dT%H:%M:%S)"
+echo "══════════════════════════════════════════════════════════════"
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setenv LOGDIR /home/slim/Documents/DIY_Shell/logs
+python3 -c "import os; print('OK' if os.path.exists('/home/slim/Documents/DIY_Shell/logs/backtest_summary.csv') else 'MISSING')"
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 100 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo REJECTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 99999 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo EXECUTED || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+python3 /home/slim/Documents/DIY_Shell/scripts/momentum.py AAPL MSFT GOOGL --topn 3 |> /tmp/qshell_sig_azJIt5.csv
+cat /tmp/qshell_sig_azJIt5.csv
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 0.05%' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py --max_notional 1000000 || echo CHECKED
+echo DONE
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 100000
+assert $CAPITAL >= 25000 && python3 /home/slim/Documents/DIY_Shell/scripts/pairs_spread.py AAPL MSFT --entry 0.1 && echo SPREAD_OK || echo SPREAD_OK
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+python3 /home/slim/Documents/DIY_Shell/scripts/pnl_report.py > /dev/null
+cat ~/.qshell_pnl
+setmarket NYSE
+setcapital 100000
+setaccount PAPER
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Momentum Daily Strategy ──────────────────────────────────"
+echo "Started: $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Capital: $CAPITAL  Account: $ACCOUNT"
+assert $CAPITAL > 10000 || exit 1
+echo "✔ Pre-trade checks passed"
+echo ""
+echo "── Scanning momentum signals ────────────────────────────────"
+python3 $QSHELL_HOME/scripts/momentum.py AAPL MSFT GOOGL AMZN TSLA META NVDA SPY QQQ --lookback 20 --topn 5 |> $LOGDIR/momentum_signals.csv
+cat $LOGDIR/momentum_signals.csv
+echo ""
+echo "── Generating orders ────────────────────────────────────────"
+python3 $QSHELL_HOME/scripts/gen_momentum_orders.py
+echo ""
+echo "── Routing orders through risk gate ────────────────────────"
+echo "AAPL BUY 100 185.50" ?> python3 $QSHELL_HOME/scripts/risk_check.py && echo "Risk gate: PASS" || echo "Risk gate: REJECTED"
+python3 $QSHELL_HOME/scripts/gen_momentum_orders.py
+echo ""
+echo "── P&L Report ───────────────────────────────────────────────"
+python3 $QSHELL_HOME/scripts/pnl_report.py
+echo ""
+echo "Strategy complete: $(date +%Y-%m-%dT%H:%M:%S)"
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 5000
+assert $CAPITAL > 10000 || echo BLOCKED
+setmarket NYSE
+setcapital 100000
+setaccount PAPER
+setenv PAIR_A AAPL
+setenv PAIR_B MSFT
+setenv ENTRY_Z 2.0
+setenv EXIT_Z  0.5
+setenv POS_SIZE 500
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Mean Reversion Pairs Strategy ────────────────────────────"
+echo "Started : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Pair    : $PAIR_A / $PAIR_B"
+echo "Capital : $CAPITAL   Account: $ACCOUNT"
+echo ""
+assert $CAPITAL >= 25000 || echo "ABORT: insufficient capital" && exit 1
+setmarket NYSE
+setcapital 100000
+setaccount PAPER
+setenv PAIR_A AAPL
+setenv PAIR_B MSFT
+setenv ENTRY_Z 2.0
+setenv EXIT_Z  0.5
+setenv POS_SIZE 500
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Mean Reversion Pairs Strategy ────────────────────────────"
+echo "Started : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Pair    : $PAIR_A / $PAIR_B"
+echo "Capital : $CAPITAL   Account: $ACCOUNT"
+echo ""
+assert $CAPITAL >= 25000 || echo "ABORT: insufficient capital" && exit 1
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 100000
+assert $CAPITAL >= 25000 && echo CAPITAL_OK
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setcapital 10000
+assert $CAPITAL >= 25000 || echo CAPITAL_BLOCKED
+setmarket NYSE
+setcapital 200000
+setaccount PAPER
+setenv TICKER AAPL
+setenv CYCLES 3
+setenv SPREAD_BPS 5
+setenv QUOTE_SIZE 100
+setenv MAX_INVENTORY 500
+setenv MAX_DRAWDOWN 2000
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Market Making Strategy ───────────────────────────────────"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Ticker    : $TICKER"
+echo "Spread    : ${SPREAD_BPS}bps  Size: $QUOTE_SIZE  MaxInv: $MAX_INVENTORY"
+echo "Account   : $ACCOUNT  Capital: $CAPITAL"
+echo ""
+assert $CAPITAL >= 50000 || echo "ABORT: need >= $50,000 capital" && exit 1
+setmarket NYSE
+setcapital 200000
+setaccount PAPER
+setenv TICKER AAPL
+setenv CYCLES 3
+setenv SPREAD_BPS 5
+setenv QUOTE_SIZE 100
+setenv MAX_INVENTORY 500
+setenv MAX_DRAWDOWN 2000
+setenv LOGDIR $QSHELL_HOME/logs
+echo "── Market Making Strategy ───────────────────────────────────"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo "Ticker    : $TICKER"
+echo "Spread    : ${SPREAD_BPS}bps  Size: $QUOTE_SIZE  MaxInv: $MAX_INVENTORY"
+echo "Account   : $ACCOUNT  Capital: $CAPITAL"
+echo ""
+assert $CAPITAL >= 50000 || echo "ABORT: need >= $50,000 capital" && exit 1
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setenv SPREAD_BPS 1
+assert $SPREAD_BPS >= 3 || echo SPREAD_TOO_TIGHT
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py --max_size 500 || echo MM_REJECTED
+setenv STRATEGY templates/momentum_daily.sh
+setenv LOGDIR $QSHELL_HOME/logs
+setenv BT_CAPITAL 100000
+setenv MIN_SHARPE 0.5
+setenv MAX_DRAWDOWN_PCT 20
+setenv PASS_THRESHOLD 3
+setmarket NYSE
+setcapital $BT_CAPITAL
+setaccount PAPER
+echo "══════════════════════════════════════════════════════════════"
+echo "  QShell Backtest Runner"
+echo "══════════════════════════════════════════════════════════════"
+echo "Strategy  : $STRATEGY"
+echo "Capital   : $BT_CAPITAL"
+echo "Min Sharpe: $MIN_SHARPE"
+echo "Max DD    : ${MAX_DRAWDOWN_PCT}%"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo ""
+assert $BT_CAPITAL > 0 || exit 1
+echo "✔ Configuration valid"
+echo ""
+echo "── Running 8-period backtest ────────────────────────────────"
+python3 -c "import os; os.makedirs(os.environ.get('LOGDIR', 'logs'), exist_ok=True)"
+python3 $QSHELL_HOME/scripts/run_backtest.py
+echo ""
+echo "── Results logged ───────────────────────────────────────────"
+cat $LOGDIR/backtest_summary.csv |> $LOGDIR/bt_run_history.csv
+cat $LOGDIR/backtest_summary.csv
+echo ""
+echo "── Detail reports ───────────────────────────────────────────"
+python3 -c "import os; files=os.listdir('$LOGDIR/backtest_detail'); print('\n'.join(sorted(files)))"
+echo ""
+echo "Backtest complete: $(date +%Y-%m-%dT%H:%M:%S)"
+echo "══════════════════════════════════════════════════════════════"
+setenv STRATEGY templates/momentum_daily.sh
+setenv LOGDIR $QSHELL_HOME/logs
+setenv BT_CAPITAL 100000
+setenv MIN_SHARPE 0.5
+setenv MAX_DRAWDOWN_PCT 20
+setenv PASS_THRESHOLD 3
+setmarket NYSE
+setcapital $BT_CAPITAL
+setaccount PAPER
+echo "══════════════════════════════════════════════════════════════"
+echo "  QShell Backtest Runner"
+echo "══════════════════════════════════════════════════════════════"
+echo "Strategy  : $STRATEGY"
+echo "Capital   : $BT_CAPITAL"
+echo "Min Sharpe: $MIN_SHARPE"
+echo "Max DD    : ${MAX_DRAWDOWN_PCT}%"
+echo "Started   : $(date +%Y-%m-%dT%H:%M:%S)"
+echo ""
+assert $BT_CAPITAL > 0 || exit 1
+echo "✔ Configuration valid"
+echo ""
+echo "── Running 8-period backtest ────────────────────────────────"
+python3 -c "import os; os.makedirs(os.environ.get('LOGDIR', 'logs'), exist_ok=True)"
+python3 $QSHELL_HOME/scripts/run_backtest.py
+echo ""
+echo "── Results logged ───────────────────────────────────────────"
+cat $LOGDIR/backtest_summary.csv |> $LOGDIR/bt_run_history.csv
+cat $LOGDIR/backtest_summary.csv
+echo ""
+echo "── Detail reports ───────────────────────────────────────────"
+python3 -c "import os; files=os.listdir('$LOGDIR/backtest_detail'); print('\n'.join(sorted(files)))"
+echo ""
+echo "Backtest complete: $(date +%Y-%m-%dT%H:%M:%S)"
+echo "══════════════════════════════════════════════════════════════"
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setenv LOGDIR /home/slim/Documents/DIY_Shell/logs
+python3 -c "import os; print('OK' if os.path.exists('/home/slim/Documents/DIY_Shell/logs/backtest_summary.csv') else 'MISSING')"
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo PASS
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 100 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo REJECTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 99999 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo SENT || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo SENT
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 99999 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo FALLBACK
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo ORDER_DATA |> /tmp/qshell_XynqbS.csv
+setcapital 5000
+assert $CAPITAL > 10000 || echo BLOCKED
+setcapital 100000
+assert $CAPITAL >= 25000 && echo OK
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setmarket NYSE
+alias
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setmarket NYSE
+rejections
+setcapital 5000
+assert $CAPITAL > 10000 || echo BLOCKED
+setcapital 10000
+assert $CAPITAL >= 25000 || echo CAPITAL_BLOCKED
+setenv SPREAD_BPS 1
+assert $SPREAD_BPS >= 3 || echo SPREAD_TOO_TIGHT
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py --max_size 500 || echo MM_REJECTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo PASS
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 100 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo REJECTED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 99999 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo SENT || echo BLOCKED
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 100 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py && echo SENT
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'GME BUY 99999 20.00' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py || echo FALLBACK
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo ORDER_DATA |> /tmp/qshell_HvWtc1.csv
+setcapital 5000
+assert $CAPITAL > 10000 || echo BLOCKED
+setcapital 100000
+assert $CAPITAL >= 25000 && echo OK
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setmarket NYSE
+alias
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+setmarket NYSE
+rejections
+setcapital 5000
+assert $CAPITAL > 10000 || echo BLOCKED
+setcapital 10000
+assert $CAPITAL >= 25000 || echo CAPITAL_BLOCKED
+setenv SPREAD_BPS 1
+assert $SPREAD_BPS >= 3 || echo SPREAD_TOO_TIGHT
+setenv QSHELL_HOME /home/slim/Documents/DIY_Shell
+echo 'AAPL BUY 99999 185.50' ?> python3 /home/slim/Documents/DIY_Shell/scripts/risk_check.py --max_size 500 || echo MM_REJECTED
+setenv PIPELINE $QSHELL_HOME/pipeline
+setenv LOGDIR $QSHELL_HOME/logs
+setmarket NYSE
+setcapital 100000
+setaccount PAPER
+echo "══════════════════════════════════════════════════════════════"
+echo "  QShell Strategy Pipeline"
+echo "══════════════════════════════════════════════════════════════"
+echo "Capital  : $CAPITAL"
+echo "Account  : $ACCOUNT"
+echo "Started  : $(date +%Y-%m-%dT%H:%M:%S)"
+echo ""
+assert $CAPITAL > 10000 || exit 1
+echo "── Stage flow ───────────────────────────────────────────────"
+echo "  universe → momentum_filter → risk_filter → size_positions → execute"
+echo ""
+echo "── Running pipeline ─────────────────────────────────────────"
+python3 $PIPELINE/universe.py \
+    | python3 $PIPELINE/momentum_filter.py --threshold 0.2 --topn 5 \
+    | python3 $PIPELINE/risk_filter.py \
+    | python3 $PIPELINE/size_positions.py --model signal \
+    | python3 $PIPELINE/execute.py --mode paper \
+    |> $LOGDIR/pipeline_executions.csv
+echo ""
+echo "── Execution log ────────────────────────────────────────────"
+cat $LOGDIR/pipeline_executions.csv
+echo ""
+echo "── Mixed C/Python pipeline ──────────────────────────────────"
+python3 $PIPELINE/universe.py \
+    | python3 $PIPELINE/momentum_filter.py --threshold 0.15 \
+    | python3 $PIPELINE/size_positions.py --model equal \
+    | python3 $PIPELINE/execute.py --mode paper --dry_run
+echo ""
+echo "Pipeline complete: $(date +%Y-%m-%dT%H:%M:%S)"
+echo "══════════════════════════════════════════════════════════════"
+setenv PIPELINE $QSHELL_HOME/pipeline
+setenv LOGDIR $QSHELL_HOME/logs
+setmarket NYSE
+setcapital 100000
+s

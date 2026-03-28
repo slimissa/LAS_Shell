@@ -238,3 +238,218 @@ size_t my_strcspn(const char* str, const char* reject) {
     return count;
 
 }
+
+char* my_strcat(char* dest, const char* src) {
+    char* end = dest + my_strlen(dest);
+    while (*src) { *end++ = *src++; }
+    *end = '\0';
+    return dest;
+}
+
+char* my_strncat(char* dest, const char* src, size_t n) {
+    char* end = dest + my_strlen(dest);
+    size_t i = 0;
+    while (i < n && src[i]) { end[i] = src[i]; i++; }
+    end[i] = '\0';
+    return dest;
+}
+
+int my_strftime(char* buf, size_t buflen, const char* fmt, const struct tm* tm) {
+    if (!buf || !fmt || !tm || buflen == 0) return 0;
+ 
+    char* out = buf;
+    size_t remaining = buflen - 1;   /* reserve space for null terminator */
+ 
+    for (const char* p = fmt; *p && remaining > 0; p++) {
+        if (*p != '%') {
+            *out++ = *p;
+            remaining--;
+            continue;
+        }
+ 
+        p++;   /* skip '%' */
+        char tmp[16];
+        const char* s = tmp;
+        int len = 0;
+ 
+        switch (*p) {
+            case 'Y':   /* 4-digit year */
+                tmp[0] = '0' + (tm->tm_year + 1900) / 1000;
+                tmp[1] = '0' + ((tm->tm_year + 1900) / 100) % 10;
+                tmp[2] = '0' + ((tm->tm_year + 1900) / 10) % 10;
+                tmp[3] = '0' + (tm->tm_year + 1900) % 10;
+                len = 4; break;
+            case 'm':   /* month 01-12 */
+                tmp[0] = '0' + (tm->tm_mon + 1) / 10;
+                tmp[1] = '0' + (tm->tm_mon + 1) % 10;
+                len = 2; break;
+            case 'd':   /* day 01-31 */
+                tmp[0] = '0' + tm->tm_mday / 10;
+                tmp[1] = '0' + tm->tm_mday % 10;
+                len = 2; break;
+            case 'H':   /* hour 00-23 */
+                tmp[0] = '0' + tm->tm_hour / 10;
+                tmp[1] = '0' + tm->tm_hour % 10;
+                len = 2; break;
+            case 'M':   /* minute 00-59 */
+                tmp[0] = '0' + tm->tm_min / 10;
+                tmp[1] = '0' + tm->tm_min % 10;
+                len = 2; break;
+            case 'S':   /* second 00-60 */
+                tmp[0] = '0' + tm->tm_sec / 10;
+                tmp[1] = '0' + tm->tm_sec % 10;
+                len = 2; break;
+            case 'T':   /* %H:%M:%S */
+                tmp[0] = '0' + tm->tm_hour / 10;
+                tmp[1] = '0' + tm->tm_hour % 10;
+                tmp[2] = ':';
+                tmp[3] = '0' + tm->tm_min / 10;
+                tmp[4] = '0' + tm->tm_min % 10;
+                tmp[5] = ':';
+                tmp[6] = '0' + tm->tm_sec / 10;
+                tmp[7] = '0' + tm->tm_sec % 10;
+                len = 8; break;
+            case 'F':   /* %Y-%m-%d */
+                tmp[0] = '0' + (tm->tm_year + 1900) / 1000;
+                tmp[1] = '0' + ((tm->tm_year + 1900) / 100) % 10;
+                tmp[2] = '0' + ((tm->tm_year + 1900) / 10) % 10;
+                tmp[3] = '0' + (tm->tm_year + 1900) % 10;
+                tmp[4] = '-';
+                tmp[5] = '0' + (tm->tm_mon + 1) / 10;
+                tmp[6] = '0' + (tm->tm_mon + 1) % 10;
+                tmp[7] = '-';
+                tmp[8] = '0' + tm->tm_mday / 10;
+                tmp[9] = '0' + tm->tm_mday % 10;
+                len = 10; break;
+            case '%':
+                tmp[0] = '%'; len = 1; break;
+            default:
+                tmp[0] = '%'; tmp[1] = *p; len = 2; break;
+        }
+ 
+        /* copy tmp into out */
+        for (int i = 0; i < len && remaining > 0; i++) {
+            *out++ = s[i];
+            remaining--;
+        }
+    }
+ 
+    *out = '\0';
+    return (int)(out - buf);
+}
+/* ── expand_arg(): expand ~ and $VAR in a single token ── */
+char* expand_arg(const char* arg, char** env) {
+    if (!arg) return NULL;
+    /* tilde */
+    if (arg[0] == '~' && (arg[1] == '/' || arg[1] == '\0')) {
+        char* home = my_getenv("HOME", env);
+        if (!home) home = getenv("HOME");
+        if (home) {
+            size_t len = my_strlen(home) + my_strlen(arg + 1) + 1;
+            char* r = malloc(len + 1);
+            if (r) { my_strcpy(r, home); my_strcat(r, arg + 1); return r; }
+        }
+        return my_strdup(arg);
+    }
+    /* $VAR — whole token */
+    if (arg[0] == '$' && arg[1] != '\0' && arg[1] != '?') {
+        const char* vn = arg + 1;
+        int ok = 1;
+        for (int i = 0; vn[i]; i++) {
+            char c = vn[i];
+            if (!((c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'&&c<='9')||c=='_'))
+                { ok = 0; break; }
+        }
+        if (ok) {
+            char* val = my_getenv(vn, env);
+            if (!val) val = getenv(vn);
+            return my_strdup(val ? val : "");
+        }
+    }
+    return my_strdup(arg);
+}
+
+/* ── expand_args(): expand all tokens in-place ── */
+void expand_args(char** args, char** env) {
+    if (!args || !env) return;
+    for (int i = 0; args[i]; i++) {
+        char* ex = expand_arg(args[i], env);
+        if (ex && ex != args[i]) { free(args[i]); args[i] = ex; }
+    }
+}
+
+/* ── expand_vars_in_line(): expand $VAR in raw input line ──────────
+ * Used BEFORE operator detection so |> $LOGFILE works.
+ * Only expands standalone $VARNAME tokens (space-delimited).
+ * Preserves quoted strings unchanged.
+ * Returns a malloc'd string.
+ * ─────────────────────────────────────────────────────────────────*/
+char* expand_vars_in_line(const char* input, char** env) {
+    if (!input) return NULL;
+    /* result buffer — grows as needed */
+    size_t cap = 1024, len = 0;
+    char* out = malloc(cap);
+    if (!out) return my_strdup(input);
+
+    const char* p = input;
+    while (*p) {
+        /* skip single-quoted sections verbatim */
+        if (*p == '\'') {
+            out[len++] = *p++;
+            while (*p && *p != '\'') {
+                if (len + 2 >= cap) { cap *= 2; out = realloc(out, cap); }
+                out[len++] = *p++;
+            }
+            if (*p) { if (len + 2 >= cap) { cap *= 2; out = realloc(out, cap); } out[len++] = *p++; }
+            continue;
+        }
+        /* skip double-quoted sections verbatim (already handled by parse_input) */
+        if (*p == '"') {
+            out[len++] = *p++;
+            while (*p && *p != '"') {
+                if (len + 2 >= cap) { cap *= 2; out = realloc(out, cap); }
+                out[len++] = *p++;
+            }
+            if (*p) { if (len + 2 >= cap) { cap *= 2; out = realloc(out, cap); } out[len++] = *p++; }
+            continue;
+        }
+        /* tilde: ~ at start or after space */
+        if (*p == '~' && (p == input || *(p-1) == ' ') && (*(p+1) == '/' || *(p+1) == ' ' || *(p+1) == '\0')) {
+            char* home = my_getenv("HOME", env);
+            if (!home) home = getenv("HOME");
+            if (home) {
+                size_t hl = my_strlen(home);
+                while (len + hl + 2 >= cap) { cap *= 2; out = realloc(out, cap); }
+                my_strcpy(out + len, home); len += hl;
+                p++;
+                continue;
+            }
+        }
+        /* $VAR */
+        if (*p == '$' && *(p+1) && *(p+1) != ' ' && *(p+1) != '\0') {
+            p++;
+            char vname[256]; int vlen = 0;
+            while (*p && ((*p>='A'&&*p<='Z')||(*p>='a'&&*p<='z')||
+                          (*p>='0'&&*p<='9')||*p=='_') && vlen<255)
+                vname[vlen++] = *p++;
+            vname[vlen] = '\0';
+            if (vlen > 0) {
+                char* val = my_getenv(vname, env);
+                if (!val) val = getenv(vname);
+                if (val) {
+                    size_t vl = my_strlen(val);
+                    while (len + vl + 2 >= cap) { cap *= 2; out = realloc(out, cap); }
+                    my_strcpy(out + len, val); len += vl;
+                } /* undefined → empty */
+            } else {
+                if (len + 2 >= cap) { cap *= 2; out = realloc(out, cap); }
+                out[len++] = '$';
+            }
+            continue;
+        }
+        if (len + 2 >= cap) { cap *= 2; out = realloc(out, cap); }
+        out[len++] = *p++;
+    }
+    out[len] = '\0';
+    return out;
+}

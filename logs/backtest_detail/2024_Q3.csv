@@ -1,0 +1,9 @@
+period,2024-Q3
+regime,CHOP
+strat_return,-0.0227
+market_return,0.0100
+alpha,-0.0327
+sharpe,-1.00
+max_drawdown_pct,2.6
+pnl_usd,-2267.91
+result,FAIL
