@@ -1,0 +1,58 @@
+# Build artifacts
+build/
+las_shell
+pipeline/bin/
+pipeline/src/universe
+pipeline/src/momentum_filter
+pipeline/src/risk_filter
+pipeline/src/size_positions
+pipeline/src/execute
+*.o
+
+# Runtime state files (user-specific, never commit)
+.las_shell_history
+.las_aliases
+.las_shell_state
+.las_shell_state.tmp
+.las_shell_audit
+.las_shell_risk
+.las_shell_risk_rejections
+.las_shell_paper_account
+.las_shell_order_log
+.las_shell_pnl
+.las_shell_state.*
+.trading_env
+
+# Runtime log output (auto-generated, not source)
+logs/*.csv
+logs/backtest_detail/*.csv
+
+# Paper trading simulation state
+.las_shell_sim_server_state.json
+
+# Market maker / pairs inventory
+/tmp/las_shell_inventory_*.txt
+/tmp/las_shell_pairs_*.txt
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor / IDE
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Core dumps
+core
+*.core
+
+# Verification output (user scripts)
+verify_qshell.sh
+las_shell_logs/
