@@ -1,4 +1,4 @@
-# Las_shell — Quantitative Trading Shell
+# Las_shell — Quantitative Trading Shell V0.5.0
 
 > A production-grade Unix shell where a trading strategy **is** a pipeline.  
 > Built in C on Linux. 16 quant features across 4 phases. 508 tests. Zero failures.
