@@ -89,9 +89,22 @@ StreamSub* stream_sub_open(const char* cmd, char** env) {
 
     /* ── Build unique FIFO path in /tmp ── */
     static unsigned int _stream_seq = 0;
+
+    /* Add random suffix to prevent local DoS via predictable FIFO paths */
+    unsigned int rand_suffix = 0;
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd >= 0) {
+        read(fd, &rand_suffix, sizeof(rand_suffix));
+        close(fd);
+    } else {
+        /* Fallback: mix PID + time + seq as pseudo-random */
+        rand_suffix = (unsigned int)(getpid() ^ time(NULL) ^ (++_stream_seq << 16));
+    }
+
     snprintf(ss->pipe_path, sizeof(ss->pipe_path),
-             "/tmp/las_shell_stream_%d_%ld_%u",
-             (int)getpid(), (long)time(NULL), ++_stream_seq);
+            "/tmp/las_shell_stream_%d_%ld_%u_%04x",
+            (int)getpid(), (long)time(NULL), ++_stream_seq,
+            rand_suffix & 0xFFFF);
 
     /* ── Create the FIFO node ── */
     /* Remove stale node if any (previous crash etc.) */
