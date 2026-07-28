@@ -55,6 +55,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <sys/file.h>
 
 #ifdef USE_OPENSSL_SHA
 #  include <openssl/evp.h>
@@ -245,11 +246,16 @@ static void log_write(const char *rec) {
                 g_audit_path, strerror(errno));
         return;
     }
-        size_t len=strlen(rec);
+    /* Serialise writers so concurrent --audit sessions don't fork the hash chain */
+    if (flock(fd, LOCK_EX) != 0) {
+        fprintf(stderr, "[audit] WARNING: flock failed — log may be unsafe under concurrent writers\n");
+    }
+    size_t len=strlen(rec);
     if (len > 4096)
         fprintf(stderr, "[audit] WARNING: record exceeds PIPE_BUF (%zu > 4096) — write may not be atomic\n", len);
     if (write(fd,rec,len) != (ssize_t)len)
         fprintf(stderr,"[audit] WARNING: partial write: %s\n",strerror(errno));
+    flock(fd, LOCK_UN);
     close(fd);
 }
 
