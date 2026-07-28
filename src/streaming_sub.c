@@ -210,8 +210,19 @@ char* stream_sub_read_line(StreamSub* ss) {
         }
     }
 
-    /* Line too long — truncate and return */
+    /* Line too long — truncate, consume rest of line, then return */
     fprintf(stderr, "$<(): WARNING — line truncated at %d bytes\n", line_pos);
+    /* Consume remaining bytes until newline or EOF to stay synchronised */
+    while (1) {
+        if (ss->buf_pos >= ss->buf_len) {
+            ssize_t n = read(ss->read_fd, ss->buffer, sizeof(ss->buffer));
+            if (n <= 0) { ss->eof = 1; break; }
+            ss->buf_len = (int)n;
+            ss->buf_pos = 0;
+        }
+        char c = ss->buffer[ss->buf_pos++];
+        if (c == '\n') break;
+    }
     line[line_pos] = '\0';
     return my_strdup(line);
 }
