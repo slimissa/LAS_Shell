@@ -55,4 +55,6 @@ core
 
 # Verification output (user scripts)
 verify_qshell.sh
-las_shell_logs/
+las_shell_logs/tests/unit/test_parser
+tests/unit/test_risk_config
+tests/unit/test_stream_sub_unit
