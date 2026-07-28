@@ -839,7 +839,12 @@ int command_source(char** args, char** env) {
 
 /* ── Las_shell: trading environment ───────────────────────────── */
 
-#define TRADING_ENV_FILE ".trading_env"
+/* Build path to ~/.trading_env — same pattern as crash_recovery.c */
+static void trading_env_path(char *buf, size_t len) {
+    const char *home = getenv("HOME");
+    if (!home) home = "/tmp";
+    snprintf(buf, len, "%s/.trading_env", home);
+}
 
 /* Write or update key=value in .trading_env */
 void save_trading_env(const char* key, const char* value) {
@@ -848,11 +853,13 @@ void save_trading_env(const char* key, const char* value) {
     int  count = 0;
     int  found = 0;
 
-    FILE* f = fopen(TRADING_ENV_FILE, "r");
+    char trading_env_file[512];
+    trading_env_path(trading_env_file, sizeof(trading_env_file));
+
+    FILE* f = fopen(trading_env_file, "r");
     if (f) {
         while (fgets(lines[count], sizeof(lines[count]), f) && count < 63) {
             lines[count][my_strcspn(lines[count], "\n")] = '\0';
-            /* Check if this line is for our key */
             size_t klen = my_strlen(key);
             if (my_strncmp(lines[count], key, klen) == 0 && lines[count][klen] == '=') {
                 snprintf(lines[count], sizeof(lines[count]), "%s=%s", key, value);
@@ -869,7 +876,7 @@ void save_trading_env(const char* key, const char* value) {
     }
 
     /* Rewrite the file */
-    f = fopen(TRADING_ENV_FILE, "w");
+    f = fopen(trading_env_file, "w");
     if (!f) { perror("save_trading_env"); return; }
     for (int i = 0; i < count; i++)
         fprintf(f, "%s\n", lines[i]);
@@ -878,7 +885,32 @@ void save_trading_env(const char* key, const char* value) {
 
 /* Load .trading_env into the shell's env array at startup */
 void load_trading_env(char*** env_ptr) {
-    FILE* f = fopen(TRADING_ENV_FILE, "r");
+    char trading_env_file[512];
+    trading_env_path(trading_env_file, sizeof(trading_env_file));
+    
+    /* Migration: warn once if v0.5.0 left a stray .trading_env in CWD */
+    {
+        const char *home = getenv("HOME");
+        if (!home) home = "/tmp";
+        char marker_path[540];
+        snprintf(marker_path, sizeof(marker_path), "%s/.trading_env.migrated", home);
+        FILE *marker = fopen(marker_path, "r");
+        if (!marker) {
+            FILE *old = fopen(".trading_env", "r");
+            if (old) {
+                fclose(old);
+                fprintf(stderr,
+                    "[trading_env] NOTE: found .trading_env in current directory.\n"
+                    "  v0.6.0 uses ~/.trading_env instead.\n"
+                    "  Copy with: cp .trading_env ~/.trading_env\n");
+                FILE *sentinel = fopen(marker_path, "w");
+                if (sentinel) fclose(sentinel);
+            }
+        }
+        if (marker) fclose(marker);
+    }
+    
+    FILE* f = fopen(trading_env_file, "r");
     if (!f) return;   /* file doesn't exist yet — that's fine */
 
     char line[512];
