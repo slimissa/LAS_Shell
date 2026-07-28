@@ -244,6 +244,7 @@ static void paper_save(void) {
     paper_ensure_path();
     FILE *f = fopen(g_paper_file, "w");
     if (!f) { perror("broker: cannot save paper account"); return; }
+    fchmod(fileno(f), S_IRUSR | S_IWUSR);  /* owner-only, like checkpoint file */
 
     fputs(PAPER_ACCOUNT_MAGIC, f);
     fprintf(f, "cash=%.4f\n",          g_paper.cash);
