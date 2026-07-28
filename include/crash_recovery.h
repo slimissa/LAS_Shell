@@ -30,6 +30,9 @@
 #define CRASH_RECOVERY_H
 
 #include <stdint.h>
+#include <pthread.h>
+
+extern pthread_mutex_t g_chk_mutex;
 
 /* ── Configuration ──────────────────────────────────────────────────────── */
 #define CHECKPOINT_FILE         ".las_shell_state"

@@ -58,7 +58,7 @@ static int       build_checkpoint_path(char *buf, size_t bufsize);
 
 /* ── Module-level state ─────────────────────────────────────────────────── */
 static pthread_t    g_chk_thread;
-static pthread_mutex_t g_chk_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t g_chk_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  g_chk_cond  = PTHREAD_COND_INITIALIZER;
 
 static volatile int g_chk_running   = 0;   /* 1 while thread is alive       */
@@ -313,12 +313,14 @@ static void *checkpoint_thread_fn(void *arg)
             break;
         }
 
-        /* Snapshot the env pointer under the lock */
+        /* Snapshot the env pointer under the lock,
+         * then save while STILL holding the lock so the main thread
+         * cannot free the env strings while we're reading them. */
         char **env_snap = g_env_ptr_ref ? *g_env_ptr_ref : NULL;
+        int save_rc = checkpoint_save_now(env_snap);
         pthread_mutex_unlock(&g_chk_mutex);
 
-        /* Write outside the lock — write_checkpoint_to_fd is pure I/O */
-        if (checkpoint_save_now(env_snap) != 0) {
+        if (save_rc != 0) {
             /* Non-fatal: log once per 10 failures to avoid log spam */
             if (g_save_error_count % 10 == 1)
                 fprintf(stderr,

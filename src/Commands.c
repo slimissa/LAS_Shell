@@ -2,6 +2,9 @@
 #include "../include/risk_config.h"
 #include <pwd.h>
 
+/* Mutex from crash_recovery.c — acquired during env mutation to prevent
+ * the checkpoint thread from reading freed memory. */
+extern pthread_mutex_t g_chk_mutex;
 
 
 //cd, cd[path], cd ~(home directory), cd .. (Replace [directory_name] with the name of the directory you want to enter (if it's within the current directory) or its full path. Move up one directory level.),cd -(previous directory) ,cd /(Change to the root directory), handle no existing directories, permissions issues.
@@ -554,19 +557,14 @@ char** command_setenv(char** args, char** env) {
     while (env[i] != NULL) {
 
         if (my_strncmp(env[i], args[1], my_strlen(args[1])) == 0 && env[i][my_strlen(args[1])] == '=') {
-
             // Replace existing variable
-
+            pthread_mutex_lock(&g_chk_mutex);
             free(env[i]);
-
             env[i] = new_var;
-
+            pthread_mutex_unlock(&g_chk_mutex);
             return env;
-
         }
-
         i++;
-
     }
 
 
@@ -625,19 +623,16 @@ char** command_setenv(char** args, char** env) {
 
 
 
+    pthread_mutex_lock(&g_chk_mutex);
     for (size_t i = 0; env[i]; i++) {
-
         free(env[i]);
-
     }
-
     free(env);
-
+    pthread_mutex_unlock(&g_chk_mutex);
     return new_env;
 
+
 }
-
-
 
 char** command_unsetenv(char** args, char** env) {
 
