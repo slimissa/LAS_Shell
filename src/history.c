@@ -146,11 +146,18 @@ static volatile sig_atomic_t g_sigterm_received = 0;
 void handle_sigterm(int sig) {
     (void)sig;
     g_sigterm_received = 1;
-    /* Signal the checkpoint thread to wake and do one final save */
-    /* pthread_cond_signal() is async-signal-safe on Linux (POSIX.1-2008) */
-    /* We rely on the checkpoint thread noticing g_sigterm_received == 1   */
-    /* via the external checkpoint_stop() call in shell_loop's exit path.  */
-    /* The safest path: just set the flag; main loop checks it.            */
+    /* SIGTERM handler — async-signal-safe: only sets a volatile flag.
+     *
+     * We intentionally do NOT call pthread_cond_signal() or
+     * checkpoint_save_now() here because neither is async-signal-safe.
+     *
+     * The main loop in shell_loop() polls g_sigterm_received and calls
+     * checkpoint_save_now() + checkpoint_stop() synchronously before
+     * exiting.  The periodic checkpoint thread provides a backup save
+     * if the main loop is blocked when SIGTERM arrives.
+     *
+     * See also: main.c:shell_loop() for the synchronous save path.
+     */
 }
 
 int get_sigterm_received(void) { return g_sigterm_received; }
