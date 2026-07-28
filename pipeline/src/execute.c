@@ -32,6 +32,8 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <unistd.h>  
+#include <sys/wait.h>
 
 #define MAX_CANDS       64
 #define SYM_LEN         16
@@ -139,6 +141,41 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (live_mode) strcpy(mode, "live");
+
+    /* ── BACKTEST_MODE routing ─────────────────────────────────────
+     * When the ~> operator sets BACKTEST_MODE=1, delegate to the
+     * Python backtesting harness. This mirrors execute.py's routing
+     * and ensures ~> works identically for C and Python pipelines.   */
+    if (getenv("BACKTEST_MODE") && !strcmp(getenv("BACKTEST_MODE"), "1")) {
+        const char *lhome = getenv("LAS_SHELL_HOME");
+        if (!lhome || !lhome[0]) {
+            lhome = "/usr/local/share/las_shell";
+        }
+        char harness_path[512];
+        snprintf(harness_path, sizeof(harness_path),
+                 "%s/scripts/backtesting_harness.py", lhome);
+
+        fprintf(stderr,
+            "[execute/c] BACKTEST_MODE=1 -> routing to %s\n",
+            harness_path);
+
+        char *argv[] = {
+            "/usr/bin/env", "python3", harness_path, NULL
+        };
+        pid_t pid = fork();
+        if (pid == 0) {
+            execvp(argv[0], argv);
+            perror("[execute/c] exec backtesting_harness");
+            _exit(1);
+        } else if (pid > 0) {
+            int status;
+            waitpid(pid, &status, 0);
+            return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+        } else {
+            perror("[execute/c] fork for backtesting_harness");
+            return 1;
+        }
+    }
 
     /* ── Read stdin ──────────────────────────────────────────── */
     char *buf = malloc(BUFLEN);
