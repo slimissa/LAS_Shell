@@ -26,7 +26,6 @@ static const char* TA[][2] = {
     {"run_strat",  "gen_orders ?> check_risk && send_orders"},
     {"live",       "assert $ACCOUNT == LIVE && run_strat"},
     {"paper",      "assert $ACCOUNT == PAPER && run_strat"},
-    {"audit",      "cat $LAS_SHELL_HOME/logs/pnl.csv"},
     {"rejections", "cat ~/.las_shell_risk_rejections"},
     {"morning",    "work && mstatus && positions && risk"},
     {"eod",        "flatten && pnl && mclose && work off"},
