@@ -37,7 +37,7 @@ ok()  { echo -e "  ${GREEN}[PASS]${RESET} $1"; PASS=$((PASS+1)); }
 err() { echo -e "  ${RED}[FAIL]${RESET} $1"; FAIL=$((FAIL+1)); }
 section() { echo -e "\n${BOLD}${CYAN}[ $1 ]${RESET}"; }
 
-cleanup() { rm -f "$CKPT_FILE" "$CKPT_FILE.tmp" /tmp/las_shell_ckpt_test_*.sh; }
+cleanup() { rm -f "$CKPT_FILE" "$CKPT_FILE.tmp" /tmp/las_shell_ckpt_test_*.sh; rm -f ~/.trading_env; }
 trap cleanup EXIT
 
 # ── Verify binary exists ───────────────────────────────────────────────────
@@ -218,7 +218,14 @@ fi
 section "T5: truncation detection"
 # ══════════════════════════════════════════════════════════════════════════
 cleanup
-"$SHELL_BIN" /tmp/las_shell_ckpt_test_1.sh >/dev/null 2>&1 || true
+
+# Create a minimal checkpoint WITHOUT trading env vars (so T5/T6 aren't affected)
+cat > /tmp/las_shell_ckpt_test_5.sh << 'SCRIPT'
+setenv FOO bar
+checkpoint save
+SCRIPT
+"$SHELL_BIN" /tmp/las_shell_ckpt_test_5.sh >/dev/null 2>&1 || true
+
 # Truncate to first 30 bytes — removes checksum line entirely
 truncate -s 30 "$CKPT_FILE"
 
@@ -228,7 +235,6 @@ if echo "$OUT2" | grep -q "UNSET"; then
 else
     err "truncated checkpoint incorrectly loaded"
 fi
-
 # ══════════════════════════════════════════════════════════════════════════
 section "T6: missing checkpoint → clean start"
 # ══════════════════════════════════════════════════════════════════════════
