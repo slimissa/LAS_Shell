@@ -12,9 +12,9 @@
 #   make run          — build and launch interactive shell
 #   make run-sim      — build, start paper sim server, launch shell
 #   make clean        — remove all build artifacts
-#   make install      — install las_shell to /usr/local/bin
+#   make install      — install las_shell to /usr/local
 #   make uninstall    — remove installed files
-# ══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════
 
 CC      = gcc
 CFLAGS  = -Wall -Wextra -g -Iinclude
@@ -58,8 +58,9 @@ LDFLAGS  = -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lreadline -lncursesw -lm 
 LDFLAGS += $(OPENSSL_LDFLAGS) $(CURL_LDFLAGS)
 
 # ── sources → objects ─────────────────────────────────────────────────────
-SRCS := $(wildcard $(SRC_DIR)/*.c)
-OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
+SRCS    := $(wildcard $(SRC_DIR)/*.c)
+OBJS    := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
+HEADERS := $(wildcard include/*.h)
 
 # ── default target ─────────────────────────────────────────────────────────
 all: $(BUILD_DIR) $(TARGET)
@@ -80,7 +81,8 @@ endif
 	@echo "  ╚══════════════════════════════════════════╝"
 	@echo ""
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c include/my_own_shell.h
+# MK8-FIX: depend on ALL headers so any header change triggers recompilation
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # ── pipeline C binaries ───────────────────────────────────────────────────
@@ -88,25 +90,34 @@ pipeline:
 	$(MAKE) -C pipeline/src CC=$(CC) CFLAGS="$(CFLAGS)"
 
 # ── test targets ─────────────────────────────────────────────────────────
+
+# MK4-FIX: track failures across all test suites, exit non-zero if any fail
 test: test-unit test-int
+	@echo ""
+	@echo "══ All Tests Complete ═════════════════════"
 
 test-unit: $(TARGET) pipeline
 	@echo "══ Unit Tests ══════════════════════════════════"
-	@cd tests/unit && \
-	    gcc -Wall -Wextra -g -o test_parser test_parser.c && ./test_parser && \
-	    gcc -Wall -Wextra -g -I../../include -o test_risk_config test_risk_config.c ../../src/risk_config.c -lm && ./test_risk_config && \
-	    gcc -Wall -Wextra -g -o test_stream_sub_unit test_stream_sub_unit.c && ./test_stream_sub_unit
+	@FAIL=0; \
+	cd tests/unit && { \
+	    gcc -Wall -Wextra -g -o test_parser test_parser.c && ./test_parser || FAIL=1; \
+	    gcc -Wall -Wextra -g -I../../include -o test_risk_config test_risk_config.c ../../src/risk_config.c -lm && ./test_risk_config || FAIL=1; \
+	    gcc -Wall -Wextra -g -o test_stream_sub_unit test_stream_sub_unit.c && ./test_stream_sub_unit || FAIL=1; \
+	    exit $$FAIL; \
+	}
 
 test-int: $(TARGET)
 	@echo "══ Integration Tests ═══════════════════════"
-	@bash tests/integration/tests.sh
-	@bash tests/integration/test_audit.sh
-	@bash tests/integration/test_broker.sh
-	@bash tests/integration/test_pipeline.sh
-	@./las_shell tests/integration/test_streaming_sub.sh
-	@bash tests/integration/test_templates.sh
-	@bash tests/integration/test_risk_config_integration.sh
-	@bash tests/integration/test_crash_recovery.sh
+	@FAIL=0; \
+	bash tests/integration/tests.sh                        || FAIL=1; \
+	bash tests/integration/test_audit.sh                   || FAIL=1; \
+	bash tests/integration/test_broker.sh                  || FAIL=1; \
+	bash tests/integration/test_pipeline.sh                || FAIL=1; \
+	./las_shell tests/integration/test_streaming_sub.sh    || FAIL=1; \
+	bash tests/integration/test_templates.sh               || FAIL=1; \
+	bash tests/integration/test_risk_config_integration.sh || FAIL=1; \
+	bash tests/integration/test_crash_recovery.sh          || FAIL=1; \
+	exit $$FAIL
 
 # ── convenience targets ───────────────────────────────────────────────────
 run: $(TARGET)
@@ -115,24 +126,52 @@ run: $(TARGET)
 run-audit: $(TARGET)
 	./$(TARGET) --audit
 
+# MK5-FIX: trap EXIT/INT/TERM so sim_server is killed even if shell crashes
 run-sim: $(TARGET)
 	@echo "Starting paper simulation server on port 8080..."
-	@python3 scripts/sim_server.py --port 8080 &
-	@SIM_PID=$$!; sleep 0.5; \
-	 BROKER_API=http://localhost:8080 ACCOUNT=PAPER ./$(TARGET); \
-	 kill $$SIM_PID 2>/dev/null || true
+	@python3 scripts/sim_server.py --port 8080 & \
+	SIM_PID=$$!; \
+	trap "kill $$SIM_PID 2>/dev/null || true" EXIT INT TERM; \
+	sleep 0.5; \
+	BROKER_API=http://localhost:8080 ACCOUNT=PAPER ./$(TARGET); \
+	kill $$SIM_PID 2>/dev/null || true
 
+# ── install ───────────────────────────────────────────────────────────────
+# MK1-FIX: install C pipeline binaries alongside Python stages
+# MK2-FIX: use install (not cp -r) with explicit permissions
+# MK8-FIX: warn before overwriting existing installation
 install: $(TARGET) pipeline
+	@if [ -f /usr/local/bin/las_shell ] && [ -z "$(FORCE)" ]; then \
+		echo ""; \
+		echo "  ╔══════════════════════════════════════════════╗"; \
+		echo "  ║  WARNING: las_shell is already installed    ║"; \
+		echo "  ║  at /usr/local/bin/las_shell                 ║"; \
+		echo "  ║                                              ║"; \
+		echo "  ║  Use 'make install FORCE=1' to overwrite     ║"; \
+		echo "  ║  or 'make uninstall' first to remove it      ║"; \
+		echo "  ╚══════════════════════════════════════════════╝"; \
+		echo ""; \
+		exit 1; \
+	fi
 	install -m 755 $(TARGET) /usr/local/bin/las_shell
 	install -m 755 scripts/quote.sh /usr/local/bin/las_quote
 	install -m 755 scripts/market_daemon.sh /usr/local/bin/las_shell_market_daemon
 	install -d /usr/local/share/las_shell
-	cp -r scripts /usr/local/share/las_shell/
-	cp -r strategies /usr/local/share/las_shell/
-	cp -r templates /usr/local/share/las_shell/
-	cp -r pipeline/python /usr/local/share/las_shell/pipeline/
-	cp -r config /usr/local/share/las_shell/
-	cp -r docs /usr/local/share/las_shell/
+	install -d /usr/local/share/las_shell/scripts
+	install -m 644 scripts/*.py /usr/local/share/las_shell/scripts/
+	install -m 755 scripts/*.sh /usr/local/share/las_shell/scripts/
+	install -d /usr/local/share/las_shell/strategies
+	install -m 644 strategies/*.sh /usr/local/share/las_shell/strategies/
+	install -d /usr/local/share/las_shell/templates
+	install -m 644 templates/*.sh /usr/local/share/las_shell/templates/
+	install -d /usr/local/share/las_shell/pipeline/python
+	install -m 644 pipeline/python/*.py /usr/local/share/las_shell/pipeline/python/
+	install -d /usr/local/share/las_shell/pipeline/bin
+	install -m 755 pipeline/bin/* /usr/local/share/las_shell/pipeline/bin/ 2>/dev/null || true
+	install -d /usr/local/share/las_shell/config
+	install -m 644 config/*.example /usr/local/share/las_shell/config/
+	install -d /usr/local/share/las_shell/docs
+	install -m 644 docs/*.md /usr/local/share/las_shell/docs/
 	install -d /usr/local/share/las_shell/logs
 	@echo "Installed → /usr/local/bin/las_shell + pipeline binaries + quote"
 	@echo "Support files → /usr/local/share/las_shell/"
@@ -142,12 +181,16 @@ uninstall:
 	rm -f /usr/local/bin/las_quote
 	rm -f /usr/local/bin/las_shell_market_daemon
 	rm -rf /usr/local/share/las_shell
-	@echo "Uninstalled → /usr/local/bin/las_shell + pipeline binaries + /usr/local/share/las_shell"
+	@echo "Uninstalled → /usr/local/bin/las_shell + /usr/local/share/las_shell"
 
+# ── clean ─────────────────────────────────────────────────────────────────
+# MK9-FIX: also remove test binaries and stale FIFOs
 clean:
 	rm -rf $(BUILD_DIR)
 	rm -f $(TARGET)
 	rm -f logs/*.csv logs/backtest_detail/*.csv
+	rm -f tests/unit/test_parser tests/unit/test_risk_config tests/unit/test_stream_sub_unit
+	rm -f /tmp/las_shell_stream_* /tmp/las_shell_unit_* 2>/dev/null || true
 	$(MAKE) -C pipeline/src clean 2>/dev/null || true
 
 .PHONY: all pipeline test test-unit test-int run run-audit run-sim install uninstall clean
