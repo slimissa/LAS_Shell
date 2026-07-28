@@ -1,4 +1,4 @@
-#!/usr/bin/las_shell
+#!/usr/bin/env las_shell
 # test_streaming_sub.sh
 # ─────────────────────────────────────────────────────────────────────────
 # Phase 3.1 — $<() Streaming Substitution Test Suite
