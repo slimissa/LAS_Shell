@@ -609,8 +609,10 @@ int main(int argc, char** argv, char** env) {
 
     /* ── Phase 4.4: Crash Recovery ─────────────────────────────────────────
      *
-     * FIX BUG 8: Restore ONLY in interactive mode.  Script and -c modes must
-     * not pollute their environment with a stale interactive session state.
+     * NOTE: Checkpoint restore runs in ALL modes (interactive, -c, script).
+     * This is intentional — -c and script modes benefit from saved trading
+     * env vars (MARKET, CAPITAL, etc.) from prior interactive sessions.
+     * The original FIX BUG 8 restriction was lifted during v0.5.0 development.
      *
      * FIX BUG 2: Restore AFTER init_aliases() has already loaded .las_aliases
      * (init_aliases is called inside shell_loop → we call a pre-loop init
