@@ -1,0 +1,29 @@
+# Las_shell Trading Environment — copy to ~/.trading_env and customise
+# Loaded automatically at shell startup
+
+MARKET=NYSE
+BROKER=IBKR
+ACCOUNT=PAPER          # PAPER | LIVE
+CAPITAL=100000         # Initial capital only -- read once at startup by
+                        # scripts/consumers that use it (e.g. size_positions
+                        # stages). It is NOT updated automatically as P&L
+                        # accrues; use `setcapital` to change it explicitly,
+                        # or re-source this file after editing it.
+BROKER_API=http://localhost:8080   # sim server default -- this is a LOCAL,
+                        # unauthenticated paper endpoint. You MUST change
+                        # this to your actual broker's API endpoint (and set
+                        # up real credentials per your broker's docs) before
+                        # ACCOUNT=LIVE will talk to anything real.
+                        # Verified behavior if you don't: with BROKER=IBKR
+                        # (as set above), a LIVE order posts to
+                        # <BROKER_API>/v1/api/iserver/account/.../orders,
+                        # which this sim server doesn't implement, so it
+                        # fails loudly (connection/404 error) -- it will NOT
+                        # silently fake a fill in that specific case. BUT if
+                        # BROKER is unset or set to anything other than
+                        # IBKR/ALPACA, live orders fall through to the
+                        # generic adapter, which posts to <BROKER_API>/orders
+                        # -- a path this sim server DOES implement -- and
+                        # will silently "fill" against your local simulator
+                        # while you believe you placed a real order. Don't
+                        # unset/change BROKER without also fixing BROKER_API.
