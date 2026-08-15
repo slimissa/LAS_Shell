@@ -685,7 +685,30 @@ static BrokerResult alpaca_order(const char *action, const char *ticker,
     curl_slist_free_all(hdrs); curl_easy_cleanup(c);
 
     if (res != CURLE_OK) {
+        /* FIX M2-1: this early return used to skip order_log_append()
+         * entirely — a network timeout/connect failure left ZERO audit
+         * trail, unlike an HTTP-level rejection (logged REJECTED_API
+         * below). An operator reviewing the order log after an outage
+         * would see no record an order was even attempted. Distinguish
+         * timeout from other connect failures so the log tells you
+         * which kind of network failure happened. */
+        /* Distinguish "definitely never reached the broker" from
+         * "reached the broker, response never confirmed" -- the latter
+         * (CURLE_PARTIAL_FILE, or a short-count write error) means the
+         * order may have actually been accepted server-side even though
+         * we have no confirmation. Automatic reconciliation of that case
+         * is explicitly out of scope (roadmap Milestone 2) -- but the
+         * log should tell a human which bucket this falls in, since
+         * "safe to retry" and "go check the broker before retrying" are
+         * very different operator actions. */
+        const char *status;
+        if (res == CURLE_OPERATION_TIMEDOUT)      status = "REJECTED_TIMEOUT";
+        else if (res == CURLE_PARTIAL_FILE ||
+                 res == CURLE_GOT_NOTHING ||
+                 res == CURLE_RECV_ERROR)          status = "UNKNOWN_STATE_NO_CONFIRM";
+        else                                        status = "REJECTED_NETWORK";
         snprintf(r.message,sizeof(r.message),"curl: %s",curl_easy_strerror(res));
+        order_log_append(action,ticker,qty,0.0,status,0,"alpaca");
         curlbuf_free(buf); return r;
     }
     if (code == 200 || code == 201) {
@@ -905,7 +928,24 @@ static BrokerResult ibkr_order(const char *action, const char *ticker,
     curl_slist_free_all(hdrs); curl_easy_cleanup(c);
 
     if (res != CURLE_OK) {
+        /* FIX M2-1, see alpaca_order() above. */
+        /* Distinguish "definitely never reached the broker" from
+         * "reached the broker, response never confirmed" -- the latter
+         * (CURLE_PARTIAL_FILE, or a short-count write error) means the
+         * order may have actually been accepted server-side even though
+         * we have no confirmation. Automatic reconciliation of that case
+         * is explicitly out of scope (roadmap Milestone 2) -- but the
+         * log should tell a human which bucket this falls in, since
+         * "safe to retry" and "go check the broker before retrying" are
+         * very different operator actions. */
+        const char *status;
+        if (res == CURLE_OPERATION_TIMEDOUT)      status = "REJECTED_TIMEOUT";
+        else if (res == CURLE_PARTIAL_FILE ||
+                 res == CURLE_GOT_NOTHING ||
+                 res == CURLE_RECV_ERROR)          status = "UNKNOWN_STATE_NO_CONFIRM";
+        else                                        status = "REJECTED_NETWORK";
         snprintf(r.message,sizeof(r.message),"curl: %s",curl_easy_strerror(res));
+        order_log_append(action,ticker,qty,0.0,status,0,"ibkr");
         curlbuf_free(buf); return r;
     }
     if (code==200) {
@@ -985,7 +1025,24 @@ static BrokerResult generic_order(const char *action, const char *ticker,
     curl_slist_free_all(hdrs); curl_easy_cleanup(c);
 
     if (res != CURLE_OK) {
+        /* FIX M2-1, see alpaca_order() above. */
+        /* Distinguish "definitely never reached the broker" from
+         * "reached the broker, response never confirmed" -- the latter
+         * (CURLE_PARTIAL_FILE, or a short-count write error) means the
+         * order may have actually been accepted server-side even though
+         * we have no confirmation. Automatic reconciliation of that case
+         * is explicitly out of scope (roadmap Milestone 2) -- but the
+         * log should tell a human which bucket this falls in, since
+         * "safe to retry" and "go check the broker before retrying" are
+         * very different operator actions. */
+        const char *status;
+        if (res == CURLE_OPERATION_TIMEDOUT)      status = "REJECTED_TIMEOUT";
+        else if (res == CURLE_PARTIAL_FILE ||
+                 res == CURLE_GOT_NOTHING ||
+                 res == CURLE_RECV_ERROR)          status = "UNKNOWN_STATE_NO_CONFIRM";
+        else                                        status = "REJECTED_NETWORK";
         snprintf(r.message,sizeof(r.message),"curl: %s",curl_easy_strerror(res));
+        order_log_append(action,ticker,qty,0.0,status,0,"generic");
         curlbuf_free(buf); return r;
     }
     if (code==200||code==201) {

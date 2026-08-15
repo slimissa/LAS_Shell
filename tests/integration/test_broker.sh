@@ -385,16 +385,28 @@ else
     if ! kill -0 $SIM_PID 2>/dev/null; then
         printf "${RED}  FAIL${NC}  sim_server failed to start\n"; FAIL=$((FAIL+4))
     else
-        OUT=$(printf 'setaccount PAPER\nsetenv BROKER_API http://localhost:18080\nreset_paper --yes\norder buy SPY 10 market\n' \
+        # PRE-EXISTING BUG (found while building Milestone 2, present in
+        # unpatched v0.5.5 too — reproduced on the original zip before any
+        # v0.6.0 changes): detect_broker() returns "generic" for
+        # ACCOUNT=PAPER + BROKER_API set (paper-over-HTTP), and
+        # command_order() gates every non-"paper" broker name behind
+        # LAS_SHELL_LIVE_CONFIRMED (FIX BR5) — correctly, as defense
+        # against a misconfigured ACCOUNT accidentally hitting a real
+        # endpoint. This test never set that var, so every sim_server
+        # order was silently REJECTED_LIVE_NOT_CONFIRMED, not FILLED.
+        # The gate is doing its job; the test was wrong. Fixed here by
+        # confirming the paper-over-HTTP session explicitly, same as any
+        # other networked order path.
+        OUT=$(printf 'setaccount PAPER\nsetenv BROKER_API http://localhost:18080\nsetenv LAS_SHELL_LIVE_CONFIRMED 1\nreset_paper --yes\norder buy SPY 10 market\n' \
             | run_las_shell_stdin)
         assert_contains "sim_server: order buy accepted"     "$OUT" "ORDER"
-        assert_contains "sim_server: FILLED"                 "$OUT" "FILLED"
+        assert_contains "sim_server: FILLED"                 "$OUT" "status=filled"
 
-        OUT=$(printf 'setaccount PAPER\nsetenv BROKER_API http://localhost:18080\nreset_paper --yes\norder buy SPY 10 market\npositions\n' \
+        OUT=$(printf 'setaccount PAPER\nsetenv BROKER_API http://localhost:18080\nsetenv LAS_SHELL_LIVE_CONFIRMED 1\nreset_paper --yes\norder buy SPY 10 market\npositions\n' \
             | run_las_shell_stdin)
         assert_contains "sim_server: positions via HTTP"     "$OUT" "SPY"
 
-        OUT=$(printf 'setaccount PAPER\nsetenv BROKER_API http://localhost:18080\nbalance\n' \
+        OUT=$(printf 'setaccount PAPER\nsetenv BROKER_API http://localhost:18080\nsetenv LAS_SHELL_LIVE_CONFIRMED 1\nbalance\n' \
             | run_las_shell_stdin)
         assert_contains "sim_server: balance via HTTP"       "$OUT" "equity"
 
