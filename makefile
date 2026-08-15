@@ -82,7 +82,7 @@ endif
 	@echo ""
 
 # MK8-FIX: depend on ALL headers so any header change triggers recompilation
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(HEADERS)
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(HEADERS) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # ── pipeline C binaries ───────────────────────────────────────────────────

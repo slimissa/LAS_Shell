@@ -57,25 +57,26 @@ PYEOF
 )
 PROBE_SOURCE=$(echo "$PROBE" | awk '{print $1}')
 
-if [ "$PROBE_SOURCE" != "stooq" ]; then
+if [ "$PROBE_SOURCE" != "yahoo" ]; then
     skip "price band check — feed unreachable from this environment ($PROBE)"
     skip "freshness check — feed unreachable from this environment ($PROBE)"
 else
     # Independent reference: Yahoo Finance chart API. Different vendor,
-    # different code path, no shared cache with the Stooq fetch above —
+    # different code path, no shared cache with the Yahoo fetch above —
     # satisfies "not from the feed under test".
-    REF_JSON=$(curl -s -m 8 "https://query1.finance.yahoo.com/v8/finance/chart/${TEST_TICKER}" 2>/dev/null)
-    REF_PRICE=$(python3 -c "
+    REF_JSON=$(curl -s -m 8 "https://api.twelvedata.com/price?symbol=${TEST_TICKER}&apikey=demo" 2>/dev/null)
+    REF_PRICE=$(echo "$REF_JSON" | python3 -c '
 import json, sys
 try:
-    d = json.loads('''$REF_JSON''')
-    print(d['chart']['result'][0]['meta']['regularMarketPrice'])
+    d = json.load(sys.stdin)
+    price = d.get("price", "")
+    print(price if price else "")
 except Exception:
-    print('')
-" 2>/dev/null)
+    print("")
+' 2>/dev/null)
 
     if [ -z "$REF_PRICE" ]; then
-        skip "price band check — independent reference (Yahoo Finance) unreachable"
+        skip "price band check — independent reference (Twelve Data) unreachable"
         skip "freshness check — depends on same live fetch, ran separately below"
         # Freshness doesn't need the reference price, only the ticker fetch,
         # so it can still run even if the reference source is down.
@@ -89,9 +90,9 @@ except Exception:
         OUT=$(python3 tests/integration/check_live_feed.py "$TEST_TICKER" "$REF_PRICE" 2>&1)
         echo "$OUT" | sed 's/^/    /'
         if echo "$OUT" | grep -q "^PRICE_BAND PASS"; then
-            pass "price band check (reference=$REF_PRICE from Yahoo Finance)"
+            pass "price band check (reference=$REF_PRICE from Twelve Data)"
         else
-            fail "price band check (reference=$REF_PRICE from Yahoo Finance)"
+            fail "price band check (reference=$REF_PRICE from Twelve Data)"
         fi
         if echo "$OUT" | grep -q "^FRESHNESS  PASS"; then
             pass "freshness check"
@@ -165,21 +166,26 @@ import live_price_feed as lpf
 from unittest import mock
 
 class FakeResp:
-    def __init__(self, text): self.text = text.encode()
-    def read(self): return self.text
+    def __init__(self, data): self.data = data
+    def read(self): return json.dumps(self.data).encode()
     def __enter__(self): return self
     def __exit__(self, *a): return False
 
 tmpdir = tempfile.mkdtemp()
 cache_path = os.path.join(tmpdir, 'cache.json')
 calls = {'n': 0}
-now = datetime.now(timezone.utc)
-csv_body = (f'Symbol,Date,Time,Open,High,Low,Close,Volume\n'
-            f'AAPL.US,{now.strftime(\"%Y-%m-%d\")},{now.strftime(\"%H:%M:%S\")},'
-            f'230.1,231.5,229.8,231.0,45123000')
+now_unix = int(datetime.now(timezone.utc).timestamp())
+yahoo_json = {'chart': {'result': [{'meta': {
+    'regularMarketPrice': 231.0,
+    'regularMarketOpen': 230.1,
+    'regularMarketDayHigh': 231.5,
+    'regularMarketDayLow': 229.8,
+    'regularMarketVolume': 45123000,
+    'regularMarketTime': now_unix
+}}]}}
 def fake_urlopen(*a, **k):
     calls['n'] += 1
-    return FakeResp(csv_body)
+    return FakeResp(yahoo_json)
 
 with mock.patch('urllib.request.urlopen', side_effect=fake_urlopen):
     r1 = lpf.get_prices(['AAPL'], cache_path=cache_path, max_age=60)

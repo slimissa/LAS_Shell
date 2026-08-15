@@ -3,8 +3,8 @@
 Las_shell Live Price Feed — live_price_feed.py
 ================================================
 Milestone 1 (v0.6.0): replaces synthetic price generation with one real,
-deliberately imperfect data source: Stooq's free, keyless CSV quote
-endpoint (https://stooq.com/q/l/).
+deliberately imperfect data source: Yahoo Finance's free JSON chart
+endpoint (https://query1.finance.yahoo.com/v8/finance/chart/).
 
 This is the ONE shared fetch point for the whole pipeline. Both
 pipeline/universe.py (Python stage) and pipeline/src/universe.c (C stage)
@@ -27,7 +27,7 @@ Design
                                same pattern src/crash_recovery.c uses for
                                checkpoints); returns the merged dict.
 - Per-ticker fallback: if the real fetch fails for a symbol (network
-  error, timeout, rate limit, malformed CSV row, unknown ticker), THAT
+  error, timeout, rate limit, malformed JSON, unknown ticker), THAT
   SYMBOL falls back to the pre-existing synthetic generator and is
   tagged "source": "synthetic_fallback" in both the cache and the output.
   Nothing is silently blended into the real path — a caller (or the
@@ -35,9 +35,9 @@ Design
   aren't by reading "source".
 
 Known, accepted limitations (imperfect by design — see roadmap Milestone 1)
-- Stooq is unauthenticated and rate-limited ("Exceeded the daily hits
-  limit"); no key, no SLA.
-- Stooq's free endpoint is not true real-time; outside market hours it
+- Yahoo Finance's free JSON endpoint is unauthenticated and may rate-limit;
+  no key, no SLA.
+- Yahoo's free endpoint is not true real-time; outside market hours it
   returns the last session's closing print, which is genuinely stale
   relative to wall-clock time. See freshness_ok() below and
   docs/LIVE_FEED.md for how the acceptance test accounts for this.
@@ -74,7 +74,8 @@ SEED_PRICES = {
     "QQQ":  435.0, "GLD":  195.0, "BTC":  67000.0,"ETH":  3500.0,
 }
 
-STOOQ_URL = "https://stooq.com/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
+YAHOO_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
 DEFAULT_CACHE = os.path.join(
     os.environ.get("LAS_SHELL_HOME", os.getcwd()), "logs", "live_price_cache.json"
 )
@@ -102,24 +103,17 @@ def synthetic_price(ticker):
     }
 
 
-def _stooq_symbol(ticker):
-    """Stooq expects an exchange suffix; default US listings to .us."""
-    t = ticker.strip().upper()
-    return t if "." in t else f"{t}.us"
-
-
 def fetch_one_live(ticker, timeout=DEFAULT_TIMEOUT):
-    """Make one real HTTP request to Stooq for `ticker`. Never raises —
+    """Make one real HTTP request to Yahoo Finance for `ticker`. Never raises —
     always returns a dict with 'source' and 'fetch_status' set, so a
     caller can log exactly why a ticker fell back without a stack trace
     corrupting pipeline state.
     """
-    sym = _stooq_symbol(ticker)
-    url = STOOQ_URL.format(sym=sym)
+    url = YAHOO_URL.format(ticker=ticker)
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "las_shell/0.6.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            raw = resp.read().decode("utf-8", errors="replace").strip()
+            data = json.loads(resp.read().decode("utf-8", errors="replace"))
     except socket.timeout:
         r = synthetic_price(ticker)
         r["fetch_status"] = "error:timeout"
@@ -133,41 +127,31 @@ def fetch_one_live(ticker, timeout=DEFAULT_TIMEOUT):
         r["fetch_status"] = f"error:{type(e).__name__}"
         return r
 
-    # Stooq returns a 2-line CSV: header, then data. On a rate limit it
-    # returns a plain-text message instead of CSV ("Exceeded the daily
-    # hits limit"); on an unknown ticker it returns fields full of "N/D".
-    lines = raw.splitlines()
-    if len(lines) < 2:
-        r = synthetic_price(ticker)
-        r["fetch_status"] = "error:rate_limited_or_empty"
-        return r
-
-    fields = lines[1].split(",")
-    # Symbol,Date,Time,Open,High,Low,Close,Volume
-    if len(fields) < 8:
-        r = synthetic_price(ticker)
-        r["fetch_status"] = "error:malformed_csv"
-        return r
-
-    _sym, d, t, o, h, l, c, v = fields[:8]
-    if "N/D" in (o, h, l, c):
-        r = synthetic_price(ticker)
-        r["fetch_status"] = "error:unknown_ticker"
-        return r
-
     try:
-        price_ts = datetime.strptime(f"{d} {t}", "%Y-%m-%d %H:%M:%S")
-        price_ts = price_ts.replace(tzinfo=timezone.utc)  # Stooq quote times are UTC
+        result = data["chart"]["result"][0]
+        meta = result["meta"]
+        price = meta.get("regularMarketPrice")
+        ts_unix = meta.get("regularMarketTime")
+
+        if price is None or price <= 0 or ts_unix is None:
+            r = synthetic_price(ticker)
+            r["fetch_status"] = "error:unknown_ticker"
+            return r
+
+        price_dt = datetime.fromtimestamp(ts_unix, tz=timezone.utc)
         return {
-            "price": float(c), "open": float(o), "high": float(h),
-            "low": float(l), "volume": int(float(v)) if v and v != "N/D" else 0,
-            "timestamp": price_ts.isoformat(),
-            "source": "stooq",
+            "price": float(price),
+            "open": float(meta.get("regularMarketOpen", price)),
+            "high": float(meta.get("regularMarketDayHigh", price)),
+            "low": float(meta.get("regularMarketDayLow", price)),
+            "volume": int(meta.get("regularMarketVolume", 0) or 0),
+            "timestamp": price_dt.isoformat(),
+            "source": "yahoo",
             "fetch_status": "ok",
         }
-    except (ValueError, IndexError):
+    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
         r = synthetic_price(ticker)
-        r["fetch_status"] = "error:malformed_csv"
+        r["fetch_status"] = "error:parse_error"
         return r
 
 
@@ -294,3 +278,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

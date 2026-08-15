@@ -71,3 +71,4 @@ tests/unit/test_stream_sub_unit
 # Temp files from pipeline builds/tools
 pipeline/**/*.tmp
 *.tmp
+logs/live_price_cache.json

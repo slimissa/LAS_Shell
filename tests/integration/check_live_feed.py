@@ -115,7 +115,7 @@ def main():
 
     entry = lpf.fetch_one_live(ticker, timeout=timeout)
 
-    if entry["source"] != "stooq":
+    if entry["source"] != "yahoo":
         print(f"NOT_REAL source={entry['source']} fetch_status={entry['fetch_status']}")
         sys.exit(3)  # distinct code: fetch didn't get real data (network/parse issue)
 
