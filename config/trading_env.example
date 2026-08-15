@@ -1,0 +1,8 @@
+# Las_shell Trading Environment — copy to ~/.trading_env and customise
+# Loaded automatically at shell startup
+
+MARKET=NYSE
+BROKER=IBKR
+ACCOUNT=PAPER          # PAPER | LIVE
+CAPITAL=100000
+BROKER_API=http://localhost:8080   # sim server default; set to real URL for LIVE
