@@ -1,0 +1,187 @@
+#include "../include/my_own_shell.h"
+
+#define HISTORY_FILE ".las_shell_history"
+
+/* FIX MS8: build the same $HOME-prefixed path alias.c already uses,
+ * instead of passing the bare relative filename to readline. Falls
+ * back to the bare relative path only if $HOME is unset, matching
+ * init_aliases()'s own fallback. */
+static void history_path(char* out, size_t out_len) {
+    const char* home = getenv("HOME");
+    if (home) snprintf(out, out_len, "%s/%s", home, HISTORY_FILE);
+    else snprintf(out, out_len, "%s", HISTORY_FILE);
+}
+
+// Initialiser l'historique
+void init_history() {
+    char path[1024];
+    history_path(path, sizeof(path));
+    // Lire l'historique depuis le fichier
+    read_history(path);
+    
+    // Limiter la taille de l'historique
+    stifle_history(1000);
+}
+
+// Sauvegarder l'historique dans un fichier
+void save_history() {
+    char path[1024];
+    history_path(path, sizeof(path));
+    write_history(path);
+    history_truncate_file(path, 1000);
+}
+
+// Ajouter une commande à l'historique
+void add_to_history(const char* command) {
+    if (command && command[0] != '\0') {
+        // Ne pas ajouter les commandes vides ou en double
+        HIST_ENTRY *last = history_get(history_length);
+        if (!last || strcmp(last->line, command) != 0) {
+            add_history(command);
+        }
+    }
+}
+
+// Nettoyer l'historique
+void cleanup_history() {
+    save_history();
+    clear_history();
+}
+
+// Fonction pour générer les complétions (TAB)
+char* command_generator(const char* text, int state) {
+    static int list_index, len;
+    char* name;
+    
+    if (!state) {
+        list_index = 0;
+        len = strlen(text);
+    }
+    
+    // Liste des commandes built-in
+    const char* builtins[] = {
+        "cd", "pwd", "echo", "env", "setenv", "unsetenv",
+        "which", "exit", "jobs", "fg", "bg", "history",
+        "alias", "unalias", "source",
+        "setmarket", "setbroker", "setaccount", "setcapital",
+        "assert", "watch", "work",
+        "order", "positions", "balance", "cancel", "close_all",
+        "reset_paper", "broker_status",
+        "riskconfig", "audit", "checkpoint",
+        "mstatus", "mpnl", "mopen", "mclose",
+        "pnl", "pnl_log", "daily",
+        "flatten", "risk", "check_risk",
+        "gen_orders", "send_orders", "orders",
+        "run_strat", "live", "paper", "backtest",
+        "morning", "eod", "reset",
+        "rejections", "audit", "clear_log",
+        "watchlist", "add_watch",
+        NULL
+    };
+    
+    while ((name = (char*)builtins[list_index++])) {
+        if (my_strncmp(name, text, len) == 0) {
+            return my_strdup(name);
+        }
+    }
+    
+    // Chercher aussi dans PATH
+    // (à implémenter plus tard)
+    
+        /* ── Search PATH for matching executables ── */
+    if (text && text[0]) {
+        static char* path_dirs[64];
+        static int   path_idx = 0;
+        static int   path_cnt = 0;
+        
+        if (!state) {
+            path_cnt = 0;
+            char* path_env = getenv("PATH");
+            if (path_env) {
+                char* pc = strdup(path_env);
+                char* sp;
+                char* d = strtok_r(pc, ":", &sp);
+                while (d && path_cnt < 63) {
+                    char fp[512];
+                    snprintf(fp, sizeof(fp), "%s/%s", d, text);
+                    if (access(fp, X_OK) == 0)
+                        path_dirs[path_cnt++] = strdup(text);
+                    d = strtok_r(NULL, ":", &sp);
+                }
+                free(pc);
+                path_dirs[path_cnt] = NULL;
+            }
+            path_idx = 0;
+        }
+        if (path_idx < path_cnt)
+            return strdup(path_dirs[path_idx++]);
+    }
+    
+    return NULL;
+}
+
+// Fonction de complétion
+char** las_completion(const char* text, int start, int end) {
+    (void)end;
+    char** matches = NULL;
+    
+    // Ne compléter que si c'est le début de la ligne
+    if (start == 0) {
+        matches = rl_completion_matches(text, command_generator);
+    } else {
+        matches = rl_completion_matches(text, rl_filename_completion_function);
+    }
+    
+    return matches;
+}
+
+/* FIX T2-6.2: async-signal-safety. The old handler called set_watch_stop(),
+ * stream_sub_close_all() (which reaps children / frees memory), printf(),
+ * and several readline redisplay functions directly from signal context —
+ * none of those are on the POSIX async-signal-safe list, so a SIGINT that
+ * arrived mid-malloc or mid-stdio-buffer-update could corrupt state or
+ * deadlock. Apply the same flag-and-poll pattern handle_sigterm() already
+ * uses: the handler only sets a volatile sig_atomic_t; the main loop
+ * (shell_loop() in main.c) polls it and performs the real work outside
+ * signal context. */
+static volatile sig_atomic_t g_sigint_received = 0;
+
+void handle_sigint(int sig) {
+    (void)sig;
+    g_sigint_received = 1;
+}
+
+int get_sigint_received(void) { return g_sigint_received; }
+
+void clear_sigint_received(void) { g_sigint_received = 0; }
+
+/* ── SIGTERM handler — save checkpoint then exit cleanly ─────────────────
+ * Called when the process receives SIGTERM (e.g. kill PID, system shutdown,
+ * or a supervisor like systemd stopping the strategy runner).
+ *
+ * We cannot call checkpoint_save_now() with the live env here because
+ * signal handlers must only call async-signal-safe functions, and fprintf /
+ * malloc are not.  Instead we write a minimal "crash marker" via low-level
+ * write(2) and let the checkpoint thread's last periodic save be the
+ * recovery point.  The background thread already holds the last good state.
+ * ────────────────────────────────────────────────────────────────────────*/
+static volatile sig_atomic_t g_sigterm_received = 0;
+
+void handle_sigterm(int sig) {
+    (void)sig;
+    g_sigterm_received = 1;
+    /* SIGTERM handler — async-signal-safe: only sets a volatile flag.
+     *
+     * We intentionally do NOT call pthread_cond_signal() or
+     * checkpoint_save_now() here because neither is async-signal-safe.
+     *
+     * The main loop in shell_loop() polls g_sigterm_received and calls
+     * checkpoint_save_now() + checkpoint_stop() synchronously before
+     * exiting.  The periodic checkpoint thread provides a backup save
+     * if the main loop is blocked when SIGTERM arrives.
+     *
+     * See also: main.c:shell_loop() for the synchronous save path.
+     */
+}
+
+int get_sigterm_received(void) { return g_sigterm_received; }
