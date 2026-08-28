@@ -1,5 +1,7 @@
 #include "../include/my_own_shell.h"
 #include "../include/risk_config.h"
+#include "../include/currency.h"
+#include "../include/calendar.h"
 #include <pwd.h>
 
 /* Mutex from crash_recovery.c — acquired during env mutation to prevent
@@ -1224,5 +1226,193 @@ int command_audit(char **args, char **env) {
 
     fprintf(stderr, "audit: unknown sub-command '%s' — try 'audit help'\n",
             args[1]);
+    return 1;
+}
+
+/* ============================================================
+ * Milestone 3 Phase 2 — `currency` built-in
+ *
+ *   currency list              list all active currencies
+ *   currency show CODE         show one currency's details
+ *   currency validate CODE     exit 0 if valid+active, 1 otherwise
+ *   currency minor CODE AMT    decimal -> minor units
+ *   currency format CODE MIN   minor units -> "$100.50"-style string
+ * ============================================================ */
+
+static void currency_print_usage(void) {
+    fprintf(stderr,
+        "Usage: currency SUBCOMMAND [ARGS]\n"
+        "  currency list                list all active currencies\n"
+        "  currency show CODE           show details for CODE (e.g. USD)\n"
+        "  currency validate CODE       exit 0 if CODE is valid+active, else 1\n"
+        "  currency minor CODE AMOUNT   convert decimal AMOUNT to minor units\n"
+        "  currency format CODE MINOR   format minor units back to decimal\n");
+}
+
+int command_currency(char** args, char** env) {
+    (void)env;
+
+    if (!args[1]) {
+        currency_print_usage();
+        return 1;
+    }
+
+    if (strcmp(args[1], "list") == 0) {
+        currency_list_all();
+        return 0;
+    }
+
+    if (strcmp(args[1], "show") == 0) {
+        if (!args[2]) { fprintf(stderr, "Usage: currency show CODE\n"); return 1; }
+        const Currency *c = currency_lookup(args[2]);
+        if (!c) {
+            fprintf(stderr, "currency show: '%s' is not a recognized active "
+                            "ISO 4217 currency\n", args[2]);
+            return 1;
+        }
+        printf("code:        %s\n", c->code);
+        printf("numeric:     %s\n", c->numeric);
+        printf("name:        %s\n", c->name);
+        printf("minor_units: %d\n", c->minor_units);
+        printf("symbol:      %s\n", c->symbol);
+        return 0;
+    }
+
+    if (strcmp(args[1], "validate") == 0) {
+        if (!args[2]) { fprintf(stderr, "Usage: currency validate CODE\n"); return 1; }
+        if (currency_is_valid(args[2])) {
+            printf("%s: valid\n", args[2]);
+            return 0;
+        }
+        printf("%s: invalid or not an active ISO 4217 currency\n", args[2]);
+        return 1;
+    }
+
+    if (strcmp(args[1], "minor") == 0) {
+        if (!args[2] || !args[3]) {
+            fprintf(stderr, "Usage: currency minor CODE AMOUNT\n");
+            return 1;
+        }
+        if (!currency_is_valid(args[2])) {
+            fprintf(stderr, "currency minor: '%s' is not a recognized active "
+                            "ISO 4217 currency\n", args[2]);
+            return 1;
+        }
+        char *endp = NULL;
+        double amount = strtod(args[3], &endp);
+        if (endp == args[3] || *endp != '\0') {
+            fprintf(stderr, "currency minor: '%s' is not a valid number\n", args[3]);
+            return 1;
+        }
+        printf("%lld\n", currency_to_minor(args[2], amount));
+        return 0;
+    }
+
+    if (strcmp(args[1], "format") == 0) {
+        if (!args[2] || !args[3]) {
+            fprintf(stderr, "Usage: currency format CODE MINOR\n");
+            return 1;
+        }
+        const Currency *c = currency_lookup(args[2]);
+        if (!c) {
+            fprintf(stderr, "currency format: '%s' is not a recognized active "
+                            "ISO 4217 currency\n", args[2]);
+            return 1;
+        }
+        char *endp = NULL;
+        long long minor = strtoll(args[3], &endp, 10);
+        if (endp == args[3] || *endp != '\0') {
+            fprintf(stderr, "currency format: '%s' is not a valid integer\n", args[3]);
+            return 1;
+        }
+        double amount = currency_from_minor(args[2], minor);
+        printf("%s%.*f\n", c->symbol, c->minor_units, amount);
+        return 0;
+    }
+
+    fprintf(stderr, "currency: unknown sub-command '%s' — try 'currency' for usage\n",
+            args[1]);
+    currency_print_usage();
+    return 1;
+}
+
+/* ============================================================
+ * Milestone 3 Phase 4 — `calendar` built-in
+ *
+ *   calendar list                    list all loaded exchanges
+ *   calendar status EXCHANGE         current session status
+ *   calendar holiday EXCHANGE DATE   exit 0 if DATE is a holiday, 1 otherwise
+ *   calendar next-open EXCHANGE      next open, as local wall-clock time
+ *   calendar next-close EXCHANGE     next close, as local wall-clock time
+ * ============================================================ */
+
+static void calendar_print_usage(void) {
+    fprintf(stderr,
+        "Usage: calendar SUBCOMMAND [ARGS]\n"
+        "  calendar list                    list all loaded exchanges\n"
+        "  calendar status EXCHANGE         current session status (e.g. NYSE)\n"
+        "  calendar holiday EXCHANGE DATE  exit 0 if DATE (YYYY-MM-DD) is a holiday\n"
+        "  calendar next-open EXCHANGE      next open time\n"
+        "  calendar next-close EXCHANGE     next close time\n");
+}
+
+int command_calendar(char** args, char** env) {
+    (void)env;
+
+    if (!args[1]) {
+        calendar_print_usage();
+        return 1;
+    }
+
+    if (strcmp(args[1], "list") == 0) {
+        calendar_list_exchanges();
+        return 0;
+    }
+
+    if (strcmp(args[1], "status") == 0) {
+        if (!args[2]) { fprintf(stderr, "Usage: calendar status EXCHANGE\n"); return 1; }
+        const char *st = calendar_status(args[2]);
+        int mins = calendar_minutes_until_change(args[2]);
+        if (mins < 0) {
+            fprintf(stderr, "calendar status: '%s' is not a recognized exchange "
+                            "(try the MIC code, e.g. XNYS, or 'calendar list')\n", args[2]);
+            return 1;
+        }
+        printf("%s: %s (%dh%02dm until next change)\n",
+               args[2], st, mins / 60, mins % 60);
+        return 0;
+    }
+
+    if (strcmp(args[1], "holiday") == 0) {
+        if (!args[2] || !args[3]) {
+            fprintf(stderr, "Usage: calendar holiday EXCHANGE DATE(YYYY-MM-DD)\n");
+            return 1;
+        }
+        int h = calendar_is_holiday(args[2], args[3]);
+        printf("%s %s: %s\n", args[2], args[3], h ? "holiday" : "trading day");
+        return h ? 0 : 1;
+    }
+
+    if (strcmp(args[1], "next-open") == 0 || strcmp(args[1], "next-close") == 0) {
+        if (!args[2]) { fprintf(stderr, "Usage: calendar %s EXCHANGE\n", args[1]); return 1; }
+        time_t t = (strcmp(args[1], "next-open") == 0)
+                   ? calendar_next_open_time(args[2])
+                   : calendar_next_close_time(args[2]);
+        if (t == 0) {
+            fprintf(stderr, "calendar %s: '%s' is not a recognized exchange, or "
+                            "no future time within the loaded registry's range\n",
+                    args[1], args[2]);
+            return 1;
+        }
+        char buf[64];
+        struct tm *utc = gmtime(&t);
+        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S UTC", utc);
+        printf("%s\n", buf);
+        return 0;
+    }
+
+    fprintf(stderr, "calendar: unknown sub-command '%s' — try 'calendar' for usage\n",
+            args[1]);
+    calendar_print_usage();
     return 1;
 }

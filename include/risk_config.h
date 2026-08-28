@@ -30,6 +30,7 @@
 /* ── Limits ────────────────────────────────────────────────── */
 #define RISK_MAX_SYMBOLS 256   /* max tickers in ALLOWED / BLOCKED list */
 #define RISK_SYMBOL_LEN   32   /* max length of a single ticker symbol (FIX RC2: was 16, too short for options-style symbols) */
+#define RISK_MAX_CURRENCIES 64 /* max codes in ALLOWED_CURRENCIES */
 #define RISK_CONFIG_PATH  "/.las_shell_risk"   /* relative to $HOME         */
 
 /* ── RiskConfig — the singleton loaded from ~/.las_shell_risk ── */
@@ -51,6 +52,20 @@ typedef struct {
 
     int     blocked_count;
     char    blocked_symbols[RISK_MAX_SYMBOLS][RISK_SYMBOL_LEN];
+
+    /* --- Milestone 3 Phase 3: currency (v0.6.0) ------------------
+     * Validated against the ISO 4217 registry (src/currency.c) at
+     * load time -- an invalid code in the config file is dropped
+     * with a stderr warning, not silently accepted and not a fatal
+     * config-load error. Order lines have no currency field (see
+     * docs/CURRENCY_INTEGRATION.md), so there is no per-order
+     * ALLOWED_CURRENCIES check -- these are account/portfolio-level
+     * settings other subsystems (multi-currency P&L) read via the
+     * accessors below.                                              */
+    char    base_currency[8];        /* BASE_CURRENCY, e.g. "USD"; empty = unset */
+    int     has_allowed_currencies;  /* 0 = all currencies permitted        */
+    int     allowed_currency_count;
+    char    allowed_currencies[RISK_MAX_CURRENCIES][8];
 
     /* --- meta --------------------------------------------------- */
     int     loaded;               /* 1 if config was successfully read   */
@@ -159,5 +174,19 @@ int command_riskconfig(char** args, char** env);
  *   Pretty-print the currently loaded RiskConfig (used by 'riskconfig show').
  */
 void print_risk_config(void);
+
+/*
+ * risk_config_base_currency()
+ *   Returns the configured BASE_CURRENCY code, or NULL if unset.
+ *   Used by multi-currency P&L to pick the aggregation currency.
+ */
+const char* risk_config_base_currency(void);
+
+/*
+ * risk_config_is_currency_allowed(code)
+ *   Returns 1 if ALLOWED_CURRENCIES is unset (all permitted) or code
+ *   is in the configured list; 0 otherwise. Case-insensitive.
+ */
+int risk_config_is_currency_allowed(const char *code);
 
 #endif /* RISK_CONFIG_H */

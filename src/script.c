@@ -458,8 +458,22 @@ int execute_command_line_env(char* input, char*** env_ptr) {
         *env_ptr = env; free_tokens(args); return 0;
     }
 
-    /* ── @time operator ── */
+    /* ── @next_open / @before_close / @time operators ── */
     if (args[0][0] == '@') {
+        char **exec_args = args;
+        int mw = handle_market_wait_operator(&exec_args);
+        if (mw == 1) {
+            if (!exec_args || !exec_args[0]) { free_tokens(args); return 0; }
+            char remaining[1024] = "";
+            for (int i = 0; exec_args[i]; i++) {
+                if (i > 0) my_strncat(remaining, " ", sizeof(remaining)-my_strlen(remaining)-1);
+                my_strncat(remaining, exec_args[i], sizeof(remaining)-my_strlen(remaining)-1);
+            }
+            free_tokens(args);
+            return execute_command_line_env(remaining, env_ptr);
+        }
+        if (mw == -1) { free_tokens(args); return 1; }
+
         if (wait_until(args[0]) != 0) {
             fprintf(stderr, "@time: invalid format '%s'\n", args[0]);
             free_tokens(args); return 1;

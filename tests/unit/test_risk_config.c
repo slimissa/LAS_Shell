@@ -20,6 +20,7 @@
 #include <unistd.h>
 
 #include "risk_config.h"
+#include "currency.h"
 
 /* ── Minimal stubs for helpers used transitively ─────────────
  * (my_getenv is used by assert_risk_limits)                   */
@@ -119,6 +120,84 @@ static void test_config_parser(void) {
     TEST("blocked[0] = GME",            cfg && strcmp(cfg->blocked_symbols[0], "GME") == 0);
 
     /* cleanup */
+    unlink(cfg_path);
+    rmdir(tmp_dir);
+}
+
+
+/* ── Milestone 3 Phase 3: BASE_CURRENCY / ALLOWED_CURRENCIES ── */
+static void test_currency_directives(void) {
+    SECTION("1b. Currency directives (BASE_CURRENCY / ALLOWED_CURRENCIES)");
+
+    /* Requires the real registry loaded -- caller (main) must have
+     * already called currency_init() with a real iso4217.json path,
+     * or every code here is (correctly) treated as invalid and this
+     * whole section degrades to testing the "reject everything"
+     * path, which is still a valid, if less interesting, thing to
+     * confirm. */
+    const char* cfg_text =
+        "BASE_CURRENCY       = usd\n"          /* lower-case on purpose */
+        "ALLOWED_CURRENCIES  = USD, EUR,GBP , JPY, ZZZNOTREAL\n";
+
+    char tmp_dir[256];
+    snprintf(tmp_dir, sizeof(tmp_dir), "/tmp/las_shell_test_cur_%d", (int)getpid());
+    mkdir(tmp_dir, 0700);
+    char cfg_path[512];
+    snprintf(cfg_path, sizeof(cfg_path), "%s/.las_shell_risk", tmp_dir);
+    FILE* f = fopen(cfg_path, "w");
+    fputs(cfg_text, f);
+    fclose(f);
+
+    char* old_home = getenv("HOME");
+    setenv("HOME", tmp_dir, 1);
+    load_risk_config();
+    if (old_home) setenv("HOME", old_home, 1);
+    else          unsetenv("HOME");
+
+    const RiskConfig* cfg = get_risk_config();
+    int have_registry = currency_is_valid("USD"); /* did the real registry load? */
+
+    if (have_registry) {
+        TEST("BASE_CURRENCY normalized to uppercase USD",
+             cfg && strcmp(cfg->base_currency, "USD") == 0);
+        TEST("has_allowed_currencies == 1",
+             cfg && cfg->has_allowed_currencies == 1);
+        TEST("allowed_currency_count == 4 (ZZZNOTREAL dropped)",
+             cfg && cfg->allowed_currency_count == 4);
+        TEST("risk_config_is_currency_allowed(USD)",
+             risk_config_is_currency_allowed("USD") == 1);
+        TEST("risk_config_is_currency_allowed(eur) case-insensitive",
+             risk_config_is_currency_allowed("eur") == 1);
+        TEST("risk_config_is_currency_allowed(ZZZNOTREAL) == 0 (never admitted)",
+             risk_config_is_currency_allowed("ZZZNOTREAL") == 0);
+        TEST("risk_config_is_currency_allowed(CAD) == 0 (valid but not listed)",
+             risk_config_is_currency_allowed("CAD") == 0);
+        TEST("risk_config_base_currency() == USD",
+             strcmp(risk_config_base_currency(), "USD") == 0);
+    } else {
+        TEST("(registry unavailable) BASE_CURRENCY left unset, not silently accepted",
+             cfg && cfg->base_currency[0] == '\0');
+        TEST("(registry unavailable) no currencies pass validation",
+             cfg && cfg->has_allowed_currencies == 0);
+    }
+
+    /* When ALLOWED_CURRENCIES is unset entirely, everything is
+     * permitted -- confirm the "no restriction" default separately. */
+    const char* cfg_text2 = "MAX_POSITION_SIZE = 1000\n";
+    f = fopen(cfg_path, "w");
+    fputs(cfg_text2, f);
+    fclose(f);
+    old_home = getenv("HOME");
+    setenv("HOME", tmp_dir, 1);
+    load_risk_config();
+    if (old_home) setenv("HOME", old_home, 1);
+    else          unsetenv("HOME");
+
+    TEST("no ALLOWED_CURRENCIES directive -> everything allowed",
+         risk_config_is_currency_allowed("XYZ_ANYTHING") == 1);
+    TEST("no BASE_CURRENCY directive -> risk_config_base_currency() is NULL",
+         risk_config_base_currency() == NULL);
+
     unlink(cfg_path);
     rmdir(tmp_dir);
 }
@@ -429,6 +508,12 @@ static void test_reload(void) {
 
 /* ── main ────────────────────────────────────────────────── */
 int main(void) {
+    /* Load the real registry so currency-directive tests exercise real
+     * validation, not just the "registry unavailable" fallback branch.
+     * Path is relative to tests/unit/, matching how the makefile
+     * invokes this binary (cd tests/unit && ./test_risk_config). */
+    currency_init("../../iso4217.json");
+
     printf("\n╭────────────────────────────────────────────────────────╮\n");
     printf("│   Las_shell Phase 4.3  —  Risk Config Test Suite          │\n");
     printf("╰────────────────────────────────────────────────────────╯\n");
@@ -442,6 +527,7 @@ int main(void) {
     test_no_config();
     test_edge_cases();
     test_reload();
+    test_currency_directives();
 
     printf("\n╭────────────────────────────────────────────────────────╮\n");
     printf("│  Results:  %3d passed  /  %3d failed  /  %3d total     │\n",

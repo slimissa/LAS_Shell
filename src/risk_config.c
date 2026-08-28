@@ -30,10 +30,12 @@
 
 #include "../include/my_own_shell.h"
 #include "../include/risk_config.h"
+#include "../include/currency.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <ctype.h>
 #include <math.h>
 
@@ -106,6 +108,9 @@ static void set_defaults(RiskConfig* cfg) {
     cfg->has_allowed_list    = 0;         /* all symbols OK by default */
     cfg->allowed_count       = 0;
     cfg->blocked_count       = 0;
+    cfg->base_currency[0]        = '\0';  /* unset by default */
+    cfg->has_allowed_currencies  = 0;     /* all currencies OK by default */
+    cfg->allowed_currency_count  = 0;
 }
 
 
@@ -173,6 +178,45 @@ static int parse_config_file(RiskConfig* cfg, const char* path) {
             cfg->blocked_count = parse_symbol_list(
                 val, cfg->blocked_symbols, RISK_MAX_SYMBOLS);
         }
+        else if (strcmp(ukey, "BASE_CURRENCY") == 0) {
+            if (currency_is_valid(val)) {
+                safe_strncpy(cfg->base_currency, val, sizeof(cfg->base_currency));
+                str_to_upper(cfg->base_currency);
+            } else {
+                fprintf(stderr,
+                    "riskconfig: line %d: BASE_CURRENCY '%s' is not a valid "
+                    "active ISO 4217 currency (ignored)\n", lineno, val);
+            }
+        }
+        else if (strcmp(ukey, "ALLOWED_CURRENCIES") == 0) {
+            /* Same comma-split convention as ALLOWED_SYMBOLS, but each
+             * entry is validated against the currency registry
+             * individually -- an invalid code is dropped with a
+             * warning rather than silently admitted or failing the
+             * whole directive. */
+            char tmp[1024];
+            safe_strncpy(tmp, val, sizeof(tmp));
+            cfg->allowed_currency_count = 0;
+            char *tok = strtok(tmp, ",");
+            while (tok && cfg->allowed_currency_count < RISK_MAX_CURRENCIES) {
+                char *sym = trim_ws(tok);
+                if (*sym) {
+                    if (currency_is_valid(sym)) {
+                        safe_strncpy(cfg->allowed_currencies[cfg->allowed_currency_count],
+                                     sym, sizeof(cfg->allowed_currencies[0]));
+                        str_to_upper(cfg->allowed_currencies[cfg->allowed_currency_count]);
+                        cfg->allowed_currency_count++;
+                    } else {
+                        fprintf(stderr,
+                            "riskconfig: line %d: ALLOWED_CURRENCIES entry '%s' "
+                            "is not a valid active ISO 4217 currency (dropped)\n",
+                            lineno, sym);
+                    }
+                }
+                tok = strtok(NULL, ",");
+            }
+            cfg->has_allowed_currencies = (cfg->allowed_currency_count > 0) ? 1 : 0;
+        }
         else {
             /* forward-compatible: unknown keys are silently ignored */
             fprintf(stderr,
@@ -236,6 +280,20 @@ void reload_risk_config(void) {
 const RiskConfig* get_risk_config(void) {
     if (!g_risk_loaded) return NULL;
     return &g_risk_cfg;
+}
+
+const char* risk_config_base_currency(void) {
+    if (!g_risk_loaded || g_risk_cfg.base_currency[0] == '\0') return NULL;
+    return g_risk_cfg.base_currency;
+}
+
+int risk_config_is_currency_allowed(const char *code) {
+    if (!code || !code[0]) return 0;
+    if (!g_risk_loaded || !g_risk_cfg.has_allowed_currencies) return 1; /* unrestricted */
+    for (int i = 0; i < g_risk_cfg.allowed_currency_count; i++) {
+        if (strcasecmp(g_risk_cfg.allowed_currencies[i], code) == 0) return 1;
+    }
+    return 0;
 }
 
 
@@ -550,6 +608,26 @@ void print_risk_config(void) {
         printf("│\n");
     } else {
         printf("  │  BLOCKED_SYMBOLS     = %-24s│\n", "(none)");
+    }
+
+    printf("  ├─────────────────────────────────────────────────┤\n");
+    if (cfg->base_currency[0]) {
+        printf("  │  BASE_CURRENCY       = %-24s│\n", cfg->base_currency);
+    } else {
+        printf("  │  BASE_CURRENCY       = %-24s│\n", "(unset)");
+    }
+    if (cfg->has_allowed_currencies) {
+        printf("  │  ALLOWED_CURRENCIES  = ");
+        int printed = 0;
+        for (int i = 0; i < cfg->allowed_currency_count; i++) {
+            if (i > 0) printf(",");
+            printf("%s", cfg->allowed_currencies[i]);
+            printed += (int)strlen(cfg->allowed_currencies[i]) + (i > 0 ? 1 : 0);
+        }
+        for (int p = printed; p < 24; p++) printf(" ");
+        printf("│\n");
+    } else {
+        printf("  │  ALLOWED_CURRENCIES  = %-24s│\n", "(all currencies permitted)");
     }
 
     printf("  ╰─────────────────────────────────────────────────╯\n");

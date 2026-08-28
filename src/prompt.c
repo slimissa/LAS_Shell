@@ -1,8 +1,10 @@
 #include "../include/my_own_shell.h"
+#include "../include/calendar.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <sys/utsname.h>
 
 /* ── ANSI colour codes ── */
@@ -14,10 +16,14 @@
 #define COLOR_BOLD    "\001\033[1m\002"
 #define COLOR_ORANGE  "\001\033[38;5;214m\002"
 
-/* ── Trading status files ──
- * ~/.las_shell_market : "OPEN 47" / "CLOSED 387" / "PRE 12" / "AFTER 23"
+/* ── Trading status ──
+ * Milestone 3 Phase 5: the market badge now comes straight from
+ * calendar_status()/calendar_minutes_until_change() (src/calendar.c)
+ * instead of polling ~/.las_shell_market, which market_daemon.sh
+ * (deleted this milestone) used to write in the background. No
+ * daemon, no polling, no stale-file race -- the badge is computed
+ * fresh, in-process, every time the prompt is drawn.
  * ~/.las_shell_pnl    : "+1240.50" or "-320.00"                           */
-#define MARKET_FILE "/.las_shell_market"
 #define PNL_FILE    "/.las_shell_pnl"
 
 /* Global prompt state */
@@ -69,12 +75,26 @@ static int read_home_file(const char* filename, char* buf, size_t buflen) {
     return 1;
 }
 
-static int get_market_status(char* status, int* minutes) {
-    char raw[64] = "";
+/* ── Market status: maps the calendar library's lowercase registry
+ * status vocabulary onto the badge's existing uppercase convention.
+ * status buffer must be at least 16 bytes. */
+static int get_market_status(const char *exchange, char* status, int* minutes) {
     strcpy(status, "CLOSED");
     *minutes = 0;
-    if (!read_home_file(MARKET_FILE, raw, 64)) return 0;
-    sscanf(raw, "%15s %d", status, minutes);
+
+    int mins = calendar_minutes_until_change(exchange);
+    if (mins < 0) return 0; /* unknown exchange / no registry data */
+
+    const char *raw = calendar_status(exchange);
+    if      (strcmp(raw, "open")        == 0) strcpy(status, "OPEN");
+    else if (strcmp(raw, "closed")      == 0) strcpy(status, "CLOSED");
+    else if (strcmp(raw, "pre")         == 0) strcpy(status, "PRE");
+    else if (strcmp(raw, "after")       == 0) strcpy(status, "AFTER");
+    else if (strcmp(raw, "lunch_break") == 0) strcpy(status, "LUNCH_BREAK");
+    else if (strcmp(raw, "early_close") == 0) strcpy(status, "EARLY_CLOSE");
+    else                                        strcpy(status, "CLOSED"); /* unknown value, fail safe */
+
+    *minutes = mins;
     return 1;
 }
 
@@ -85,7 +105,7 @@ static void build_market_badge(char* out, size_t outlen) {
     if (menv && menv[0]) snprintf(exchange, sizeof(exchange), "%s", menv);
 
     char status[16]; int minutes;
-    if (!get_market_status(status, &minutes)) {
+    if (!get_market_status(exchange, status, &minutes)) {
         snprintf(out, outlen, "[%s: --]", exchange);
         return;
     }
@@ -108,17 +128,25 @@ static void build_pnl_badge(char* out, size_t outlen) {
 }
 
 /* Badge colour:
- *   OPEN  + P&L >= 0  → GREEN
- *   OPEN  + P&L <  0  → YELLOW
- *   PRE                → ORANGE
- *   CLOSED / AFTER     → RED            */
+ *   OPEN         + P&L >= 0  → GREEN
+ *   OPEN         + P&L <  0  → YELLOW
+ *   PRE                      → ORANGE
+ *   LUNCH_BREAK               → ORANGE   (Phase 5)
+ *   EARLY_CLOSE                → YELLOW   (Phase 5)
+ *   CLOSED / AFTER            → RED            */
 static const char* badge_color(void) {
-    char status[16]; int minutes;
-    if (!get_market_status(status, &minutes)) return COLOR_RED;
+    char exchange[64] = "NYSE";
+    char* menv = getenv("MARKET");
+    if (menv && menv[0]) snprintf(exchange, sizeof(exchange), "%s", menv);
 
-    if (strcmp(status, "PRE") == 0)   return COLOR_ORANGE;
-    if (strcmp(status, "AFTER") == 0) return COLOR_RED;
-    if (strcmp(status, "CLOSED") == 0) return COLOR_RED;
+    char status[16]; int minutes;
+    if (!get_market_status(exchange, status, &minutes)) return COLOR_RED;
+
+    if (strcmp(status, "PRE")         == 0) return COLOR_ORANGE;
+    if (strcmp(status, "LUNCH_BREAK") == 0) return COLOR_ORANGE;
+    if (strcmp(status, "EARLY_CLOSE") == 0) return COLOR_YELLOW;
+    if (strcmp(status, "AFTER")       == 0) return COLOR_RED;
+    if (strcmp(status, "CLOSED")      == 0) return COLOR_RED;
 
     /* OPEN — colour depends on P&L */
     char praw[64] = "";

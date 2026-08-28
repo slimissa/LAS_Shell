@@ -1,4 +1,5 @@
 #include "../include/my_own_shell.h"
+#include "../include/calendar.h"
 
 /* ── @time operator helper ── */
 int wait_until(const char* token) {
@@ -28,6 +29,176 @@ int wait_until(const char* token) {
     return 0;
 }
 
+
+/* ── @next_open / @before_close operator helpers (Milestone 3 Phase 6) ──
+ * Both operators share the same "wait until an absolute UTC instant"
+ * primitive, unlike @time's wait_until() above which targets a
+ * wall-clock time-of-day (mod 24h) computed from localtime(). Here the
+ * target already comes out of calendar_next_open_time()/
+ * calendar_next_close_time() as an absolute time_t, so there's no
+ * drift-correction resync needed -- each loop iteration just
+ * recomputes delta against the fixed target directly. */
+/* Returns 1 if the wait completed normally (target already passed, or
+ * reached via the loop below) -- caller should proceed to run the
+ * pending command. Returns 0 if interrupted by Ctrl+C or a shutdown
+ * signal -- caller must NOT run the pending command: silently
+ * proceeding after an explicit cancel (or mid-shutdown) is worse than
+ * doing nothing, especially when the pending command could be a live
+ * order or strategy invocation left over from hours ago.
+ *
+ * FIX M3-P6-1: the original version of this loop only checked
+ * get_watch_stop(), which is exclusively set from inside shell_loop()
+ * AFTER read_input() returns (src/main.c) -- code that never runs
+ * while execution is blocked here, synchronously, mid-command. A
+ * Ctrl+C during an hours-long @next_open/@before_close wait set the
+ * async-signal-safe g_sigint_received flag (history.c) exactly as
+ * intended, but nothing in this loop ever polled it, so the wait was
+ * silently uninterruptible in practice -- found via manual testing,
+ * not a review comment. Now polls get_sigint_received() and
+ * get_sigterm_received() directly every 100ms, same cadence as the
+ * existing delta recomputation. */
+static int wait_until_epoch(time_t target, const char *label) {
+    if (target <= 0) return 1;
+    time_t now = time(NULL);
+    long delta = (long)(target - now);
+    if (delta <= 0) return 1;
+
+    struct tm utc_tm;
+    gmtime_r(&target, &utc_tm);
+    char buf[32];
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S UTC", &utc_tm);
+    printf("%s: waiting until %s (%lds)... (Ctrl+C to cancel)\n", label, buf, delta);
+    fflush(stdout);
+
+    struct timespec ts = { 0, 100000000L };
+    while (delta > 0 && !get_watch_stop() &&
+           !get_sigint_received() && !get_sigterm_received()) {
+        nanosleep(&ts, NULL);
+        now = time(NULL);
+        delta = (long)(target - now);
+    }
+
+    if (get_sigint_received()) {
+        /* Consume it here -- this IS the handling for this Ctrl+C,
+         * so shell_loop() shouldn't also treat it as a fresh
+         * interrupt (redraw prompt, etc.) when control returns to it
+         * right after. */
+        clear_sigint_received();
+        printf("\n%s: cancelled\n", label);
+        return 0;
+    }
+    if (get_sigterm_received()) {
+        /* Deliberately NOT cleared/consumed -- shell_loop()'s existing
+         * SIGTERM handling (checkpoint save + exit) must still fire
+         * when control returns to it. This wait loop's only job on
+         * shutdown is to stop blocking promptly, not to duplicate or
+         * pre-empt that shutdown logic. */
+        return 0;
+    }
+    if (get_watch_stop()) return 0; /* defensive parity with @time's check; not
+                                      * expected to trigger from inside this
+                                      * synchronous call path in practice */
+    return 1;
+}
+
+/* If exec_args[0] names a real exchange (MIC code or alias -- see
+ * calendar.c's alias table), consumes it (advances *args_ptr past it)
+ * and returns 1 with *exchange_out set. Otherwise leaves *args_ptr
+ * untouched and returns 0, so the caller keeps its $MARKET/"NYSE"
+ * default and treats exec_args[0] as the start of the command to run.
+ * calendar_exchange_exists() (not calendar_status()'s fail-safe
+ * "closed") is what makes this distinction possible -- see its
+ * doc comment in calendar.h. */
+static int maybe_consume_exchange(char*** args_ptr, const char **exchange_out) {
+    char **a = *args_ptr;
+    if (a[0] && calendar_exchange_exists(a[0])) {
+        *exchange_out = a[0];
+        *args_ptr = a + 1;
+        return 1;
+    }
+    return 0;
+}
+
+static const char* default_exchange(void) {
+    const char *m = getenv("MARKET");
+    return (m && m[0]) ? m : "NYSE";
+}
+
+/* Shared entry point for main.c / script.c / operators.c so the
+ * @next_open / @before_close parsing + waiting logic exists in
+ * exactly one place, called from all three "a command line starts
+ * with '@'" sites instead of duplicated three times (which is how
+ * the collision with the plain @time handler's "invalid format"
+ * error was originally missed in two of the three call sites).
+ *
+ * Returns:
+ *    1  -- args[0] was @next_open or @before_close, fully handled
+ *          (including the wait). *args_ptr is advanced past the
+ *          operator's own tokens to the command that should now run
+ *          (which may be empty -- caller must check).
+ *   -1  -- args[0] matched one of these two operators but had a
+ *          parse/lookup error (already printed to stderr). Caller
+ *          should treat this as a failed command, NOT fall through
+ *          to wait_until() -- that would also fail to parse this
+ *          same token and print a confusing, wrong "@time: invalid
+ *          format" message for an error that has nothing to do with
+ *          @time.
+ *    0  -- args[0] doesn't match either operator name; *args_ptr is
+ *          untouched. Caller falls through to its own @time /
+ *          wait_until() handling (or treats args[0] as a normal
+ *          command if it doesn't start with '@' at all).
+ */
+int handle_market_wait_operator(char*** args_ptr) {
+    char **exec_args = *args_ptr;
+    if (!exec_args || !exec_args[0]) return 0;
+
+    if (strcmp(exec_args[0], "@next_open") == 0) {
+        exec_args++;
+        const char *exchange = default_exchange();
+        maybe_consume_exchange(&exec_args, &exchange);
+        time_t t = calendar_next_open_time(exchange);
+        if (t == 0) {
+            fprintf(stderr,
+                "@next_open: '%s' is not a recognized exchange, or no future "
+                "open time within the loaded calendar registry\n", exchange);
+            return -1;
+        }
+        int completed = wait_until_epoch(t, "@next_open");
+        if (!completed) return -1; /* cancelled (Ctrl+C) or shutting down -- don't run the command */
+        *args_ptr = exec_args;
+        return 1;
+    }
+
+    if (strcmp(exec_args[0], "@before_close") == 0) {
+        exec_args++;
+        const char *exchange = default_exchange();
+        maybe_consume_exchange(&exec_args, &exchange);
+        if (!exec_args[0]) {
+            fprintf(stderr, "@before_close: missing MINUTES argument\n");
+            return -1;
+        }
+        char *endp = NULL;
+        long minutes = strtol(exec_args[0], &endp, 10);
+        if (endp == exec_args[0] || *endp != '\0' || minutes < 0) {
+            fprintf(stderr, "@before_close: invalid MINUTES '%s'\n", exec_args[0]);
+            return -1;
+        }
+        exec_args++;
+        time_t close_t = calendar_next_close_time(exchange);
+        if (close_t == 0) {
+            fprintf(stderr,
+                "@before_close: '%s' is not a recognized exchange, or no future "
+                "close time within the loaded calendar registry\n", exchange);
+            return -1;
+        }
+        int completed = wait_until_epoch(close_t - minutes * 60, "@before_close");
+        if (!completed) return -1; /* cancelled (Ctrl+C) or shutting down -- don't run the command */
+        *args_ptr = exec_args;
+        return 1;
+    }
+
+    return 0;
+}
 
 Job jobs[MAX_JOBS];
 int job_count = 0;
@@ -618,9 +789,21 @@ int execute_sequence(CommandNode* head, char*** env_ptr) {
             /* ── expand $VAR and ~ before dispatch ── */
             expand_args(node->args, env);
 
-            /* ── @time operator ── */
+            /* ── @next_open / @before_close operators (Phase 6) ── must
+             * be checked before the generic @HH:MM:SS handler below,
+             * since these tokens don't match wait_until()'s sscanf
+             * format and would otherwise fall through to its "invalid
+             * format" error path. ── */
             char** exec_args = node->args;
-            if (exec_args[0] && exec_args[0][0] == '@') {
+            int mw = handle_market_wait_operator(&exec_args);
+            if (mw == 1) {
+                if (!exec_args || !exec_args[0]) { prev = node; node = node->next; continue; }
+            }
+            else if (mw == -1) {
+                last_status = 1; prev = node; node = node->next; continue;
+            }
+            /* ── @time operator ── */
+            else if (exec_args[0] && exec_args[0][0] == '@') {
                 if (wait_until(exec_args[0]) == 0) { exec_args++; }
                 else {
                     fprintf(stderr, "@time: invalid format '%s'\n", exec_args[0]);

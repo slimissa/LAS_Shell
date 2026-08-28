@@ -214,6 +214,9 @@ int command_echo(char** args, char** env);
 
 int command_env(char** env);
 
+int command_currency(char** args, char** env);
+int command_calendar(char** args, char** env);
+
 int command_which(char** args, char** env);
 
 int command_exit(char** args);
@@ -263,6 +266,7 @@ char* my_strcat(char* dest, const char* src);
 int my_strftime(char* buf, size_t buflen, const char* fmt, const struct tm* tm);
 
 int   wait_until(const char* token);
+int   handle_market_wait_operator(char*** args_ptr);
 
 char* my_getenv(const char* name, char** env);
 char* expand_arg(const char* arg, char** env);

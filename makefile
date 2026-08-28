@@ -102,7 +102,9 @@ test-unit: $(TARGET) pipeline
 	@FAIL=0; \
 	cd tests/unit && { \
 	    gcc -Wall -Wextra -g -o test_parser test_parser.c && ./test_parser || FAIL=1; \
-	    gcc -Wall -Wextra -g -I../../include -o test_risk_config test_risk_config.c ../../src/risk_config.c -lm && ./test_risk_config || FAIL=1; \
+	    gcc -Wall -Wextra -g -I../../include -o test_risk_config test_risk_config.c ../../src/risk_config.c ../../src/currency.c -lm && ./test_risk_config || FAIL=1; \
+	    gcc -Wall -Wextra -g -I../../include -o test_currency test_currency.c ../../src/currency.c -lm && ./test_currency ../../iso4217.json || FAIL=1; \
+	    gcc -Wall -Wextra -g -I../../include -o test_calendar test_calendar.c ../../src/calendar.c -lpthread && ./test_calendar ../../calendar.json || FAIL=1; \
 	    gcc -Wall -Wextra -g -o test_stream_sub_unit test_stream_sub_unit.c && ./test_stream_sub_unit || FAIL=1; \
 	    exit $$FAIL; \
 	}
@@ -119,6 +121,8 @@ test-int: $(TARGET) pipeline
 	bash tests/integration/test_risk_config_integration.sh || FAIL=1; \
 	bash tests/integration/test_crash_recovery.sh          || FAIL=1; \
 	bash tests/integration/test_live_feed.sh               || FAIL=1; \
+	bash tests/integration/test_multi_currency_pnl.sh       || FAIL=1; \
+	bash tests/integration/test_market_wait_operators.sh    || FAIL=1; \
 	exit $$FAIL
 
 # ── convenience targets ───────────────────────────────────────────────────
@@ -157,7 +161,6 @@ install: $(TARGET) pipeline
 	fi
 	install -m 755 $(TARGET) /usr/local/bin/las_shell
 	install -m 755 scripts/quote.sh /usr/local/bin/las_quote
-	install -m 755 scripts/market_daemon.sh /usr/local/bin/las_shell_market_daemon
 	install -d /usr/local/share/las_shell
 	install -d /usr/local/share/las_shell/scripts
 	install -m 644 scripts/*.py /usr/local/share/las_shell/scripts/
@@ -175,13 +178,14 @@ install: $(TARGET) pipeline
 	install -d /usr/local/share/las_shell/docs
 	install -m 644 docs/*.md /usr/local/share/las_shell/docs/
 	install -d /usr/local/share/las_shell/logs
+	install -m 644 iso4217.json /usr/local/share/las_shell/iso4217.json
+	install -m 644 calendar.json /usr/local/share/las_shell/calendar.json
 	@echo "Installed → /usr/local/bin/las_shell + pipeline binaries + quote"
 	@echo "Support files → /usr/local/share/las_shell/"
 
 uninstall:
 	rm -f /usr/local/bin/las_shell
 	rm -f /usr/local/bin/las_quote
-	rm -f /usr/local/bin/las_shell_market_daemon
 	rm -rf /usr/local/share/las_shell
 	@echo "Uninstalled → /usr/local/bin/las_shell + /usr/local/share/las_shell"
 
@@ -191,7 +195,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -f $(TARGET)
 	rm -f logs/*.csv logs/backtest_detail/*.csv
-	rm -f tests/unit/test_parser tests/unit/test_risk_config tests/unit/test_stream_sub_unit
+	rm -f tests/unit/test_parser tests/unit/test_risk_config tests/unit/test_stream_sub_unit tests/unit/test_currency tests/unit/test_calendar
 	rm -f /tmp/las_shell_stream_* /tmp/las_shell_unit_* 2>/dev/null || true
 	$(MAKE) -C pipeline/src clean 2>/dev/null || true
 

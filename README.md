@@ -161,7 +161,6 @@ Las_shell/
 │   ├── check_hedge_ratio.py    # Hedge ratio validator
 │   ├── run_backtest.py         # Backtest orchestrator
 │   ├── sim_server.py           # Paper trading simulation server
-│   ├── market_daemon.sh        # Market status daemon (feeds prompt)
 │   └── quote.sh                # Quote shell wrapper
 │
 ├── templates/                  # Ready-to-run strategy templates

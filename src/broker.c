@@ -36,6 +36,8 @@
 
 #include "../include/my_own_shell.h"
 #include "../include/broker.h"
+#include "../include/currency.h"
+#include "../include/risk_config.h"
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -74,6 +76,18 @@ typedef struct {
     int    quantity;        /* +long / -short */
     double avg_cost;
     double realized_pnl;
+    /* Milestone 3 Phase 7: every symbol tradeable through this shell
+     * today (Alpaca-style US equities, sim_server, the synthetic/live
+     * price feed) is USD-denominated -- there is no mechanism
+     * anywhere in the codebase that assigns a non-USD currency to a
+     * symbol, so this always ends up "USD" (or BASE_CURRENCY, if
+     * configured) in practice. The field and the grouping/formatting
+     * logic below are real and general regardless: if a future
+     * milestone adds a non-USD symbol source, per-currency
+     * breakdown starts working immediately, no format changes
+     * needed. Not fabricating currency diversity that doesn't exist
+     * today just to demo the feature. */
+    char   currency[8];
 } Position;
 
 /* In-process paper account */
@@ -333,9 +347,17 @@ static void paper_load(void) {
             if (g_paper.pos_count >= MAX_POSITIONS) continue;
             Position *p = &g_paper.positions[g_paper.pos_count];
             strncpy(p->ticker, key + 4, sizeof(p->ticker) - 1);
-            if (sscanf(val, "%d:%lf:%lf",
-                       &p->quantity, &p->avg_cost, &p->realized_pnl) == 3)
+            /* Phase 7: 4th field (currency) is optional on read for
+             * backward compatibility with paper-account files saved
+             * before this milestone; missing/unparsed -> "USD". */
+            strcpy(p->currency, "USD");
+            char cur[8] = "";
+            int n = sscanf(val, "%d:%lf:%lf:%7[A-Z]",
+                            &p->quantity, &p->avg_cost, &p->realized_pnl, cur);
+            if (n >= 3) {
+                if (n == 4 && cur[0]) strncpy(p->currency, cur, sizeof(p->currency) - 1);
                 if (p->quantity != 0) g_paper.pos_count++;
+            }
         }
     }
     fclose(f);
@@ -361,13 +383,17 @@ static void paper_save(void) {
     for (int i = 0; i < g_paper.pos_count; i++) {
         Position *p = &g_paper.positions[i];
         if (p->quantity == 0) continue;
-        fprintf(f, "pos.%s=%d:%.4f:%.4f\n",
-                p->ticker, p->quantity, p->avg_cost, p->realized_pnl);
+        fprintf(f, "pos.%s=%d:%.4f:%.4f:%s\n",
+                p->ticker, p->quantity, p->avg_cost, p->realized_pnl,
+                p->currency[0] ? p->currency : "USD");
     }
     fclose(f);
 }
 
-/* Find or create a Position slot (NULL if ledger full). */
+/* Find or create a Position slot (NULL if ledger full). New
+ * positions are tagged with risk_config's BASE_CURRENCY if
+ * configured, else "USD" -- see the Position struct's currency field
+ * comment for why this is the only real default available today. */
 static Position *paper_find_or_create(const char *ticker) {
     for (int i = 0; i < g_paper.pos_count; i++)
         if (!strcmp(g_paper.positions[i].ticker, ticker))
@@ -376,6 +402,8 @@ static Position *paper_find_or_create(const char *ticker) {
     Position *p = &g_paper.positions[g_paper.pos_count++];
     memset(p, 0, sizeof(*p));
     strncpy(p->ticker, ticker, sizeof(p->ticker) - 1);
+    const char *base = risk_config_base_currency();
+    strncpy(p->currency, (base && base[0]) ? base : "USD", sizeof(p->currency) - 1);
     return p;
 }
 
@@ -486,11 +514,12 @@ static int paper_print_positions(int json, const char *filter, char **env) {
             first = 0;
             printf("  {\"symbol\":\"%s\",\"qty\":%d,\"avg_cost\":%.4f,"
                    "\"market_price\":%.4f,\"market_value\":%.2f,"
-                   "\"unrealized_pnl\":%.2f,\"realized_pnl\":%.2f}",
+                   "\"unrealized_pnl\":%.2f,\"realized_pnl\":%.2f,"
+                   "\"currency\":\"%s\"}",
                    p->ticker, p->quantity, p->avg_cost,
                    mkt, mkt * p->quantity,
                    (mkt - p->avg_cost) * p->quantity,
-                   p->realized_pnl);
+                   p->realized_pnl, p->currency[0] ? p->currency : "USD");
         }
         puts("\n]");
         return 0;
@@ -501,6 +530,8 @@ static int paper_print_positions(int json, const char *filter, char **env) {
     printf("  %s\n","──────────────────────────────────────────────────────────────");
 
     double tot_mv = 0, tot_up = 0, tot_rp = 0;
+    const char *base_cur = risk_config_base_currency();
+    if (!base_cur || !base_cur[0]) base_cur = "USD";
     for (int i = 0; i < g_paper.pos_count; i++) {
         Position *p = &g_paper.positions[i];
         if (!p->quantity) continue;
@@ -510,12 +541,76 @@ static int paper_print_positions(int json, const char *filter, char **env) {
         double up  = (mkt - p->avg_cost) * p->quantity;
         printf("  %-8s %8d %10.2f %12.2f %12.2f %+12.2f\n",
                p->ticker, p->quantity, p->avg_cost, mkt, mv, up);
-        tot_mv += mv; tot_up += up; tot_rp += p->realized_pnl;
+        /* Phase 7: only sum into the headline TOTAL when the position
+         * is actually denominated in base_cur -- summing raw doubles
+         * across currencies (e.g. $100 + ¥100) would silently produce
+         * a meaningless number. Today every position IS base_cur (see
+         * Position struct comment), so this changes nothing in
+         * practice, but the guard is real, not decorative: it's what
+         * makes the per-currency breakdown's "NOT included in TOTAL"
+         * claim below actually true rather than just asserted. */
+        const char *pos_cur = p->currency[0] ? p->currency : "USD";
+        if (strcmp(pos_cur, base_cur) == 0) {
+            tot_mv += mv; tot_up += up; tot_rp += p->realized_pnl;
+        }
     }
     printf("  %s\n","──────────────────────────────────────────────────────────────");
     printf("  %-8s %8s %10s %12s %12.2f %+12.2f\n",
            "TOTAL","","","",tot_mv,tot_up);
-    printf("  Realized P&L (closed positions): %+.2f\n\n", tot_rp);
+    printf("  Realized P&L (closed positions): %+.2f\n", tot_rp);
+
+    /* Milestone 3 Phase 7: per-currency breakdown. See the Position
+     * struct's currency field comment -- every position tagged today
+     * is USD (or BASE_CURRENCY if configured), since nothing in this
+     * codebase assigns a non-USD currency to a symbol yet. This
+     * grouping is genuinely computed, not hardcoded to one bucket --
+     * it will show multiple lines the moment multiple currencies
+     * genuinely exist among open positions. */
+    {
+        char cur_codes[MAX_POSITIONS][8];
+        double cur_mv[MAX_POSITIONS], cur_up[MAX_POSITIONS], cur_rp[MAX_POSITIONS];
+        int n_cur = 0;
+        for (int i = 0; i < g_paper.pos_count; i++) {
+            Position *p = &g_paper.positions[i];
+            if (!p->quantity) continue;
+            if (filter && strcmp(p->ticker, filter)) continue;
+            const char *cur = p->currency[0] ? p->currency : "USD";
+            double mkt = get_market_price(p->ticker, env);
+            double mv  = mkt * p->quantity;
+            double up  = (mkt - p->avg_cost) * p->quantity;
+
+            int idx = -1;
+            for (int j = 0; j < n_cur; j++)
+                if (strcmp(cur_codes[j], cur) == 0) { idx = j; break; }
+            if (idx < 0 && n_cur < MAX_POSITIONS) {
+                idx = n_cur++;
+                strncpy(cur_codes[idx], cur, sizeof(cur_codes[idx]) - 1);
+                cur_codes[idx][sizeof(cur_codes[idx]) - 1] = '\0';
+                cur_mv[idx] = cur_up[idx] = cur_rp[idx] = 0.0;
+            }
+            if (idx >= 0) { cur_mv[idx] += mv; cur_up[idx] += up; cur_rp[idx] += p->realized_pnl; }
+        }
+
+        if (n_cur > 1) {
+            /* Only worth printing when there's genuinely more than one
+             * currency -- with the single-USD case (today, always),
+             * this would just repeat the TOTAL line above verbatim. */
+            printf("\n  By currency:\n");
+            for (int j = 0; j < n_cur; j++) {
+                const Currency *c = currency_lookup(cur_codes[j]);
+                int mu = c ? c->minor_units : 2;
+                const char *sym = c ? c->symbol : "";
+                printf("    %-4s  mkt_val=%s%.*f  unreal_pnl=%s%+.*f  realized_pnl=%s%+.*f",
+                       cur_codes[j], sym, mu, cur_mv[j], sym, mu, cur_up[j], sym, mu, cur_rp[j]);
+                if (strcmp(cur_codes[j], base_cur) != 0) {
+                    printf("   (no FX rate source configured -- shown unconverted, "
+                           "NOT included in the %s TOTAL above)", base_cur);
+                }
+                printf("\n");
+            }
+        }
+    }
+    printf("\n");
     return 0;
 }
 

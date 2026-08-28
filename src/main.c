@@ -1,6 +1,8 @@
 #define _DEFAULT_SOURCE
 #include "../include/my_own_shell.h"
 #include "../include/risk_config.h"
+#include "../include/currency.h"
+#include "../include/calendar.h"
 #include <errno.h>
 #include <sys/stat.h>
 #include <limits.h>
@@ -40,6 +42,12 @@ int shell_builtins(char** args, char*** env_ptr, char* initial_directory) {
     else if (my_strcmp(args[0], "env") == 0) {
         return command_env(env);
     } 
+    else if (my_strcmp(args[0], "currency") == 0) {
+        return command_currency(args, env);
+    }
+    else if (my_strcmp(args[0], "calendar") == 0) {
+        return command_calendar(args, env);
+    }
     else if (my_strcmp(args[0], "which") == 0) {
         return command_which(args, env);
     } 
@@ -353,7 +361,22 @@ void shell_loop(char** env) {
             last_status = command_assert(args, env);
         }
         else if (args[0][0] == '@') {
-            if (wait_until(args[0]) == 0) {
+            char **exec_args = args;
+            int mw = handle_market_wait_operator(&exec_args);
+            if (mw == 1) {
+                if (exec_args && exec_args[0]) {
+                    char remaining[1024] = "";
+                    for (int i = 0; exec_args[i]; i++) {
+                        if (i > 0) my_strncat(remaining, " ", sizeof(remaining)-my_strlen(remaining)-1);
+                        my_strncat(remaining, exec_args[i], sizeof(remaining)-my_strlen(remaining)-1);
+                    }
+                    last_status = execute_command_line(remaining, env);
+                }
+            }
+            else if (mw == -1) {
+                last_status = 1;
+            }
+            else if (wait_until(args[0]) == 0) {
                 if (args[1]) {
                     char remaining[1024] = "";
                     for (int i = 1; args[i]; i++) {
@@ -552,6 +575,16 @@ int main(int argc, char** argv, char** env) {
 
     /* Load persistent trading environment from .trading_env */
     load_trading_env(&env);
+
+    /* Milestone 3 Phase 1: currency registry must be loaded before
+     * load_risk_config(), since Phase 3 validates BASE_CURRENCY /
+     * ALLOWED_CURRENCIES against it at config-load time. currency_init(NULL)
+     * always succeeds (falls back to a built-in USD-only table with a
+     * stderr warning if iso4217.json can't be found) so this never blocks
+     * shell startup. */
+    currency_init(NULL);
+    calendar_init(NULL);
+
     load_risk_config();   /* Phase 4.3: load ~/.las_shell_risk */
 
     /* ── Phase 4.1: --audit flag detection ────────────────────────────────
